@@ -1,6 +1,7 @@
 import logging
 
 from TTS.tts.configs.shared_configs import BaseTTSConfig
+from TTS.tts.utils.languages import normalize_language
 from TTS.tts.utils.text import cleaners
 from TTS.tts.utils.text.characters import BaseCharacters, Graphemes, IPAPhonemes
 from TTS.tts.utils.text.phonemizers import get_default_phonemizer, get_phonemizer_by_name
@@ -33,7 +34,8 @@ class TTSTokenizer:
         >>> from TTS.tts.utils.text.tokenizer import TTSTokenizer
         >>> tokenizer = TTSTokenizer(use_phonemes=False, characters=Graphemes())
         >>> text = "Hello world!"
-        >>> ids = tokenizer.text_to_ids(text)
+        >>> language = "en"
+        >>> ids = tokenizer.text_to_ids(text, language)
         >>> text_hat = tokenizer.ids_to_text(ids)
         >>> assert text == text_hat
 
@@ -105,19 +107,15 @@ class TTSTokenizer:
             language(str):
                 The language code of the text. Defaults to None.
 
-        TODO:
-            - Add support for language-specific processing.
-
         1. Text normalizatin
         2. Phonemization (if use_phonemes is True)
         3. Add blank char between characters
         4. Add BOS and EOS characters
         5. Text to token IDs
         """
-        # TODO: text cleaner should pick the right routine based on the language
-        logger.debug("Tokenizer input text: %s", text)
+        logger.debug("Tokenizer input text: %s (language: %s)", text, language)
         if self.text_cleaner is not None:
-            text = self.text_cleaner(text)
+            text = self.text_cleaner(text, lang=normalize_language(language))
             logger.debug("Cleaned text: %s", text)
         if self.phonemizer:
             text = self.phonemizer.phonemize(text, separator="", language=language)

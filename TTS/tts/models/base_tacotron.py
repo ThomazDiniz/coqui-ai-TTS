@@ -115,6 +115,8 @@ class BaseTacotron(BaseTTS):
 
         if not isinstance(style_mel, dict):
             if style_text is not None:
+                if language is None and self.language_manager.num_languages == 1:
+                    language = self.language_manager.language_names[0]
                 style_text = torch.tensor(
                     self.tokenizer.text_to_ids(style_text, language=language), dtype=torch.long, device=self.device
                 ).unsqueeze(0)

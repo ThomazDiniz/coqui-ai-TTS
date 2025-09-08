@@ -628,8 +628,10 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
         if (speaker_id := kwargs.pop("speaker_id", None)) is not None:
             speaker = speaker_id
             warn_synthesize_speaker_id_deprecated()
-        text_inputs = self.tokenizer.text_to_ids(text, language=language)
         language_id = self._get_language_id(language)
+        if language is None and self.language_manager.num_languages == 1:
+            language = self.language_manager.language_names[0]
+        text_inputs = self.tokenizer.text_to_ids(text, language=language)
         _speaker_id, d_vector = self._get_speaker_id_or_dvector(speaker, speaker_wav, voice_dir)
         text_inputs = torch.as_tensor(text_inputs, dtype=torch.long, device=self.device).unsqueeze(0)
         if language_id is not None:

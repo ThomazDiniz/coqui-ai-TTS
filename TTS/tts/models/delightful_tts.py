@@ -139,7 +139,7 @@ class ForwardTTSE2eDataset(TTSDataset):
         wav_filename = os.path.basename(item["audio_file"])
 
         try:
-            token_ids = self.get_token_ids(idx, item["text"])
+            token_ids = self.get_token_ids(idx, item["text"], item["language"])
         except:
             logger.exception("%s %s", idx, item)
             # pylint: disable=raise-missing-from
@@ -799,7 +799,8 @@ class DelightfulTTS(BaseTTSE2E):
             warn_synthesize_speaker_id_deprecated()
 
         # convert text to sequence of token IDs
-        text_inputs = self.tokenizer.text_to_ids(text, language=None)
+        language = kwargs.pop("language", None)
+        text_inputs = self.tokenizer.text_to_ids(text, language=language)
         text_inputs = torch.as_tensor(text_inputs, dtype=torch.long, device=self.device).unsqueeze(0)
 
         _speaker_id, d_vector = self._get_speaker_id_or_dvector(speaker, speaker_wav, voice_dir)

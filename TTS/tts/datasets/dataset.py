@@ -306,11 +306,11 @@ class TTSDataset(Dataset):
     def get_attn_mask(attn_file):
         return np.load(attn_file)
 
-    def get_token_ids(self, idx, text):
+    def get_token_ids(self, idx, text, language):
         if self.tokenizer.use_phonemes:
             token_ids = self.get_phonemes(idx, text)["token_ids"]
         else:
-            token_ids = self.tokenizer.text_to_ids(text)
+            token_ids = self.tokenizer.text_to_ids(text, language)
         return np.array(token_ids, dtype=np.int32)
 
     def load_data(self, idx) -> dict[str, Any]:
@@ -325,7 +325,7 @@ class TTSDataset(Dataset):
             wav = noise_augment_audio(wav)
 
         # get token ids
-        token_ids = self.get_token_ids(idx, item["text"])
+        token_ids = self.get_token_ids(idx, item["text"], item["language"])
 
         # get pre-computed attention maps
         attn = None

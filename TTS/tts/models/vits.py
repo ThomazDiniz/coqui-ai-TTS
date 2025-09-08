@@ -94,7 +94,7 @@ class VitsDataset(TTSDataset):
 
         wav_filename = os.path.basename(item["audio_file"])
 
-        token_ids = self.get_token_ids(idx, item["text"])
+        token_ids = self.get_token_ids(idx, item["text"], item["language"])
 
         # after phonemization the text length may change
         # this is a shameful 🤭 hack to prevent longer phonemes
