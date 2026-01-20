@@ -12,9 +12,9 @@ from TTS.utils.manage import ModelManager
 GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
-@pytest.fixture(scope="session", autouse=True)
-def set_env():
-    os.environ["COQUI_TOS_AGREED"] = "1"
+@pytest.fixture(autouse=True)
+def set_env(monkeypatch):
+    monkeypatch.setenv("COQUI_TOS_AGREED", "1")
 
 
 @pytest.fixture
@@ -53,11 +53,11 @@ def test_xtts_streaming(manager, device: torch.device):
     speaker_wav = [os.path.join(get_tests_data_path(), "ljspeech", "wavs", "LJ001-0001.wav")]
     speaker_wav_2 = os.path.join(get_tests_data_path(), "ljspeech", "wavs", "LJ001-0002.wav")
     speaker_wav.append(speaker_wav_2)
-    model_path, _, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v1.1")
+    model_path, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v1.1")
     config = XttsConfig()
-    config.load_json(model_path / "config.json")
+    config.load_json(config_path)
     model = Xtts.init_from_config(config)
-    model.load_checkpoint(config, checkpoint_dir=str(model_path))
+    model.load_checkpoint(config, checkpoint_dir=str(model_path.parent))
     model.to(device)
 
     print("Computing speaker latents...")
@@ -107,11 +107,11 @@ def test_xtts_v2_streaming(manager, device: torch.device):
     from TTS.tts.models.xtts import Xtts
 
     speaker_wav = [os.path.join(get_tests_data_path(), "ljspeech", "wavs", "LJ001-0001.wav")]
-    model_path, _, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
+    model_path, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
     config = XttsConfig()
-    config.load_json(model_path / "config.json")
+    config.load_json(config_path)
     model = Xtts.init_from_config(config)
-    model.load_checkpoint(config, checkpoint_dir=str(model_path))
+    model.load_checkpoint(config, checkpoint_dir=str(model_path.parent))
     model.to(device)
 
     print("Computing speaker latents...")
