@@ -1,6 +1,7 @@
 from typing import cast
 
 from TTS.model import BaseTrainerModel
+from TTS.utils.audio.processor import AudioProcessor
 from TTS.vocoder.configs.shared_configs import BaseVocoderConfig
 
 # pylint: skip-file
@@ -25,6 +26,7 @@ class BaseVocoder(BaseTrainerModel):
     def __init__(self, config):
         super().__init__()
         self.config = cast(BaseVocoderConfig, config)
+        self.ap = AudioProcessor.init_from_config(self.config)
         self._set_model_args()
 
     def _set_model_args(self) -> None:

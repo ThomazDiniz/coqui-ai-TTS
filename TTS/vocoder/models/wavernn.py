@@ -9,7 +9,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from TTS.utils.audio import AudioProcessor
 from TTS.utils.audio.numpy_transforms import mulaw_decode
 from TTS.vocoder.configs import WavernnConfig
 from TTS.vocoder.datasets.wavernn_dataset import WaveRNNDataset
@@ -176,7 +175,6 @@ class Wavernn(BaseVocoder):
         else:
             raise RuntimeError("Unknown model mode value - ", self.args.mode)
 
-        self.ap = AudioProcessor(**config.audio.to_dict())
         self.aux_dims = self.args.res_out_dims // 4
 
         if self.args.use_upsample_net:
@@ -509,7 +507,6 @@ class Wavernn(BaseVocoder):
     ) -> tuple[dict, dict]:
         from TTS.tts.utils.visual import plot_spectrogram
 
-        ap = self.ap
         figures = {}
         audios = {}
         samples = test_loader.dataset.load_test_samples(1)
@@ -517,7 +514,7 @@ class Wavernn(BaseVocoder):
             x = torch.FloatTensor(sample[0])
             x = x.to(next(self.parameters()).device)
             y_hat = self.inference(x, self.config.batched, self.config.target_samples, self.config.overlap_samples)
-            x_hat = ap.melspectrogram(y_hat)
+            x_hat = self.ap.melspectrogram(y_hat)
             figures.update(
                 {
                     f"test_{idx}/ground_truth": plot_spectrogram(x.T),
@@ -556,12 +553,11 @@ class Wavernn(BaseVocoder):
         num_gpus: int,
         rank: int | None = None,
     ):
-        ap = self.ap
         dataset = WaveRNNDataset(
-            ap=ap,
+            ap=self.ap,
             items=samples,
             seq_len=config.seq_len,
-            hop_len=ap.hop_length,
+            hop_len=self.ap.hop_length,
             pad=config.model_args.pad,
             mode=config.model_args.mode,
             mulaw=config.model_args.mulaw,

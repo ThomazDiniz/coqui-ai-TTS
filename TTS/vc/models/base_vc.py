@@ -13,7 +13,6 @@ from TTS.config.shared_configs import ModelArgs
 from TTS.model import BaseTrainerModel
 from TTS.tts.datasets.dataset import TTSDataset
 from TTS.tts.utils.data import get_length_balancer_weights
-from TTS.utils.audio.processor import AudioProcessor
 from TTS.vc.configs.shared_configs import BaseVCConfig
 
 # pylint: skip-file
@@ -30,10 +29,9 @@ class BaseVC(BaseTrainerModel):
     MODEL_TYPE = "vc"
     config: BaseVCConfig
 
-    def __init__(self, config: Coqpit, ap: AudioProcessor | None = None) -> None:
+    def __init__(self, config: Coqpit) -> None:
         super().__init__()
         self.config = cast(BaseVCConfig, config)
-        self.ap = ap
         self._set_model_args()
 
     def _set_model_args(self) -> None:
@@ -172,7 +170,6 @@ class BaseVC(BaseTrainerModel):
             compute_energy=config.get("compute_energy", False),
             energy_cache_path=config.get("energy_cache_path", None),
             samples=samples,
-            ap=self.ap,
             return_wav=config.return_wav if "return_wav" in config else False,
             batch_group_size=0 if is_eval else config.batch_group_size * config.batch_size,
             min_text_len=config.min_text_len,

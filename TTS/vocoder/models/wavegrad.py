@@ -252,7 +252,7 @@ class Wavegrad(BaseVocoder):
         logger: "Logger",
         assets: dict,
         steps: int,  # pylint: disable=unused-argument
-    ) -> tuple[dict, np.ndarray]:
+    ) -> None:
         pass
 
     @torch.inference_mode()
@@ -271,7 +271,6 @@ class Wavegrad(BaseVocoder):
 
     def test(self, assets: dict, test_loader: "DataLoader", outputs=None):  # pylint: disable=unused-argument
         # setup noise schedule and inference
-        ap = assets["audio_processor"]
         noise_schedule = self.config["test_noise_schedule"]
         betas = np.linspace(noise_schedule["min_val"], noise_schedule["max_val"], noise_schedule["num_steps"])
         self.compute_noise_level(betas)
@@ -284,7 +283,7 @@ class Wavegrad(BaseVocoder):
             # compute voice
             y_pred = self.inference(x)
             # compute spectrograms
-            figures = plot_results(y_pred, y, ap, "test")
+            figures = plot_results(y_pred, y, self.ap, "test")
             # Sample audio
             sample_voice = y_pred[0].squeeze(0).detach().cpu().numpy()
         return figures, {"test/audio": sample_voice}
@@ -316,12 +315,11 @@ class Wavegrad(BaseVocoder):
         num_gpus: int,
         rank: int | None = None,
     ):
-        ap = assets["audio_processor"]
         dataset = WaveGradDataset(
-            ap=ap,
+            ap=self.ap,
             items=samples,
             seq_len=self.config.seq_len,
-            hop_len=ap.hop_length,
+            hop_len=self.ap.hop_length,
             pad_short=self.config.pad_short,
             conv_pad=self.config.conv_pad,
             is_training=not is_eval,

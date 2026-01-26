@@ -1,6 +1,5 @@
 from inspect import signature
 
-import numpy as np
 import torch
 from coqpit import Coqpit
 from torch import nn
@@ -9,7 +8,6 @@ from torch.utils.data.distributed import DistributedSampler
 from trainer.io import load_fsspec
 from trainer.trainer_utils import get_optimizer, get_scheduler
 
-from TTS.utils.audio import AudioProcessor
 from TTS.vocoder.configs.shared_configs import BaseGANVocoderConfig
 from TTS.vocoder.datasets.gan_dataset import GANDataset
 from TTS.vocoder.layers.losses import DiscriminatorLoss, GeneratorLoss
@@ -21,7 +19,7 @@ from TTS.vocoder.utils.generic_utils import plot_results
 class GAN(BaseVocoder):
     config: BaseGANVocoderConfig
 
-    def __init__(self, config: Coqpit, ap: AudioProcessor = None):
+    def __init__(self, config: Coqpit):
         """Wrap a generator and a discriminator network. It provides a compatible interface for the trainer.
         It also helps mixing and matching different generator and disciminator networks easily.
 
@@ -30,7 +28,6 @@ class GAN(BaseVocoder):
 
         Args:
             config (Coqpit): Model configuration.
-            ap (AudioProcessor): 🐸TTS AudioProcessor instance. Defaults to None.
 
         Examples:
             Initializing the GAN model with HifiGAN generator and discriminator.
@@ -43,7 +40,6 @@ class GAN(BaseVocoder):
         self.model_d = setup_discriminator(self.config)
         self.train_disc = False  # if False, train only the generator.
         self.y_hat_g = None  # the last generator prediction to be passed onto the discriminator
-        self.ap = ap
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the generator's forward pass.
@@ -186,12 +182,11 @@ class GAN(BaseVocoder):
             outputs = {"model_outputs": self.y_hat_g}
         return outputs, loss_dict
 
-    def _log(self, name: str, ap: AudioProcessor, batch: dict, outputs: dict) -> tuple[dict, dict]:
+    def _log(self, name: str, batch: dict, outputs: dict) -> tuple[dict, dict]:
         """Logging shared by the training and evaluation.
 
         Args:
             name (str): Name of the run. `train` or `eval`,
-            ap (AudioProcessor): Audio processor used in training.
             batch (Dict): Batch used in the last train/eval step.
             outputs (Dict): Model outputs from the last train/eval step.
 
@@ -200,7 +195,7 @@ class GAN(BaseVocoder):
         """
         y_hat = outputs[0]["model_outputs"] if self.train_disc else outputs[1]["model_outputs"]
         y = batch["waveform"]
-        figures = plot_results(y_hat, y, ap, name)
+        figures = plot_results(y_hat, y, self.ap, name)
         sample_voice = y_hat[0].squeeze(0).detach().cpu().numpy()
         audios = {f"{name}/audio": sample_voice}
         return figures, audios
@@ -212,9 +207,9 @@ class GAN(BaseVocoder):
         logger: "Logger",
         assets: dict,
         steps: int,  # pylint: disable=unused-argument
-    ) -> tuple[dict, np.ndarray]:
+    ) -> None:
         """Call `_log()` for training."""
-        figures, audios = self._log("eval", self.ap, batch, outputs)
+        figures, audios = self._log("eval", batch, outputs)
         logger.eval_figures(steps, figures)
         logger.eval_audios(steps, audios, self.ap.sample_rate)
 
@@ -231,9 +226,9 @@ class GAN(BaseVocoder):
         logger: "Logger",
         assets: dict,
         steps: int,  # pylint: disable=unused-argument
-    ) -> tuple[dict, np.ndarray]:
+    ) -> None:
         """Call `_log()` for evaluation."""
-        figures, audios = self._log("eval", self.ap, batch, outputs)
+        figures, audios = self._log("eval", batch, outputs)
         logger.eval_figures(steps, figures)
         logger.eval_audios(steps, audios, self.ap.sample_rate)
 
@@ -338,7 +333,6 @@ class GAN(BaseVocoder):
 
         Args:
             config (Coqpit): Model config.
-            ap (AudioProcessor): Audio processor.
             is_eval (True): Set the dataloader for evaluation if true.
             samples (List): Data samples.
             verbose (bool): Log information if true.
@@ -377,8 +371,3 @@ class GAN(BaseVocoder):
     def get_criterion(self):
         """Return criterions for the optimizers"""
         return [DiscriminatorLoss(self.config), GeneratorLoss(self.config)]
-
-    @staticmethod
-    def init_from_config(config: Coqpit) -> "GAN":
-        ap = AudioProcessor.init_from_config(config)
-        return GAN(config, ap=ap)

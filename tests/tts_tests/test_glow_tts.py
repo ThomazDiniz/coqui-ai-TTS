@@ -7,13 +7,10 @@ from torch import optim
 from trainer.generic_utils import count_parameters
 from trainer.logging.tensorboard_logger import TensorboardLogger
 
-from tests import assert_parameters_change, get_tests_data_path, get_tests_input_path, get_tests_output_path
+from tests import assert_parameters_change, get_tests_data_path, get_tests_output_path
 from TTS.tts.configs.glow_tts_config import GlowTTSConfig
 from TTS.tts.layers.losses import GlowTTSLoss
 from TTS.tts.models.glow_tts import GlowTTS
-from TTS.utils.audio import AudioProcessor
-
-# pylint: disable=unused-variable
 
 torch.manual_seed(1)
 use_cuda = torch.cuda.is_available()
@@ -21,8 +18,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 c = GlowTTSConfig()
 
-ap = AudioProcessor(**c.audio)
-WAV_FILE = os.path.join(get_tests_input_path(), "example_1.wav")
 BATCH_SIZE = 3
 
 
