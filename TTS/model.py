@@ -29,7 +29,8 @@ class BaseTrainerModel(TrainerModel):
         warnings.warn(
             f"{cls.__name__}.init_from_config(config) is deprecated and will be removed soon, "
             f"just initialize with {cls.__name__}(config)",
-            DeprecationWarning,
+            UserWarning,
+            stacklevel=2,
         )
         return cls(config)
 

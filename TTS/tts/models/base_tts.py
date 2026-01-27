@@ -55,7 +55,7 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
                 "The `ap`, `tokenizer`, `speaker_manager` and `language_manager` "
                 "arguments are deprecated and will be removed soon. You can "
                 "safely leave them out.",
-                DeprecationWarning,
+                UserWarning,
             )
         # Some models use their own tokenizer
         config = cast(BaseTTSConfig, config)
