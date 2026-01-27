@@ -56,10 +56,6 @@ class KNNVC(CloningMixin, BaseVC):
         self.ssl_dim = self.args.ssl_dim
         self.wavlm = get_wavlm()
 
-    @staticmethod
-    def init_from_config(config: KNNVCConfig) -> "KNNVC":
-        return KNNVC(config)
-
     @torch.inference_mode()
     def get_features(self, audio: PathOrTensor, vad_trigger_level=0) -> torch.Tensor:
         """Return features for the given waveform with output shape (seq_len, dim).

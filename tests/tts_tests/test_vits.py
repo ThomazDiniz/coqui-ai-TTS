@@ -221,7 +221,7 @@ def test_d_vector_forward(device):
         d_vector_file=[str(Path(get_tests_data_path()) / "dummy_speakers.json")],
     )
     config = VitsConfig(model_args=args)
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     model.train()
     input_dummy, input_lengths, _, spec, spec_lengths, waveform = _create_inputs(config, device, batch_size=batch_size)
     d_vectors = torch.randn(batch_size, 256).to(device)
@@ -276,7 +276,7 @@ def test_secl_forward(device, language_ids_file, encoder_model_path, encoder_con
     speaker_ids = torch.randint(0, num_speakers, (batch_size,)).long().to(device)
     lang_ids = torch.randint(0, num_langs, (batch_size,)).long().to(device)
 
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     output_dict = model.forward(
         input_dummy,
         input_lengths,
@@ -343,7 +343,7 @@ def test_d_vector_inference(device, batch_size):
         d_vector_file=[str(Path(get_tests_data_path()) / "dummy_speakers.json")],
     )
     config = VitsConfig(model_args=args)
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     model.eval()
 
     input_dummy, input_lengths, *_ = _create_inputs(config, device, batch_size=batch_size)
@@ -358,7 +358,7 @@ def test_d_vector_inference(device, batch_size):
 def test_train_eval_log(device):
     batch_size = 2
     config = VitsConfig(model_args=VitsArgs(num_chars=32, spec_segment_size=10))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     model.run_data_dep_init = False
     model.train()
     batch = _create_batch(config, device, batch_size)
@@ -378,7 +378,7 @@ def test_train_eval_log(device):
 
 def test_test_run(device):
     config = VitsConfig(model_args=VitsArgs(num_chars=32))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     model.run_data_dep_init = False
     model.eval()
     test_figures, test_audios = model.test_run(None)
@@ -389,7 +389,7 @@ def test_test_run(device):
 def test_load_checkpoint(device):
     chkp_path = str(Path(get_tests_output_path()) / "dummy_glow_tts_checkpoint.pth")
     config = VitsConfig(VitsArgs(num_chars=32))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     chkp = {}
     chkp["model"] = model.state_dict()
     torch.save(chkp, chkp_path)
@@ -401,21 +401,21 @@ def test_load_checkpoint(device):
 
 def test_get_criterion(device):
     config = VitsConfig(VitsArgs(num_chars=32))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     criterion = model.get_criterion()
     assert criterion is not None
 
 
 def test_init_from_config(device):
     config = VitsConfig(model_args=VitsArgs(num_chars=32))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
 
     config = VitsConfig(model_args=VitsArgs(num_chars=32, num_speakers=2))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     assert not hasattr(model, "emb_g")
 
     config = VitsConfig(model_args=VitsArgs(num_chars=32, num_speakers=2, use_speaker_embedding=True))
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     assert model.num_speakers == 2
     assert hasattr(model, "emb_g")
 
@@ -427,7 +427,7 @@ def test_init_from_config(device):
             speakers_file=str(Path(get_tests_data_path()) / "ljspeech" / "speakers.json"),
         )
     )
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     assert model.num_speakers == 10
     assert hasattr(model, "emb_g")
 
@@ -439,7 +439,7 @@ def test_init_from_config(device):
             d_vector_file=[str(Path(get_tests_data_path()) / "dummy_speakers.json")],
         )
     )
-    model = Vits.init_from_config(config).to(device)
+    model = Vits(config).to(device)
     assert model.num_speakers == 1
     assert not hasattr(model, "emb_g")
     assert model.embedded_speaker_dim == config.d_vector_dim

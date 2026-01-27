@@ -12,4 +12,4 @@ def setup_model(config: "BaseTTSConfig") -> "BaseTTS":
         MyModel = find_module("TTS.tts.models", config.base_model.lower())
     else:
         MyModel = find_module("TTS.tts.models", config.model.lower())
-    return MyModel.init_from_config(config=config)
+    return MyModel(config)

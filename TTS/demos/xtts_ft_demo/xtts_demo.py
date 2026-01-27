@@ -31,7 +31,7 @@ def load_model(xtts_checkpoint, xtts_config, xtts_vocab):
         return "You need to run the previous steps or manually set the `XTTS checkpoint path`, `XTTS config path`, and `XTTS vocab path` fields !!"
     config = XttsConfig()
     config.load_json(xtts_config)
-    XTTS_MODEL = Xtts.init_from_config(config)
+    XTTS_MODEL = Xtts(config)
     print("Loading XTTS model! ")
     XTTS_MODEL.load_checkpoint(config, checkpoint_path=xtts_checkpoint, vocab_path=xtts_vocab, use_deepspeed=False)
     if torch.cuda.is_available():

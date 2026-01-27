@@ -174,10 +174,6 @@ class OpenVoice(CloningMixin, BaseVC):
 
         self.ref_enc = ReferenceEncoder(self.spec_channels, self.gin_channels)
 
-    @staticmethod
-    def init_from_config(config: OpenVoiceConfig) -> "OpenVoice":
-        return OpenVoice(config)
-
     def load_checkpoint(
         self,
         config: Coqpit,

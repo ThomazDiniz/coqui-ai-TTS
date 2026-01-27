@@ -163,7 +163,7 @@ class Synthesizer(nn.Module):
         directory and there is a config.json file in the directory.
         """
         self.tts_config = VitsConfig()
-        self.tts_model = Vits.init_from_config(self.tts_config)
+        self.tts_model = Vits(self.tts_config)
         self.tts_model.load_fairseq_checkpoint(self.tts_config, checkpoint_path, eval=True)
         self.tts_config = self.tts_model.config
         self.output_sample_rate = self.tts_config.audio["sample_rate"]
@@ -176,7 +176,7 @@ class Synthesizer(nn.Module):
         We assume there is a config.json file in the same directory.
         """
         self.vc_config = OpenVoiceConfig()
-        self.vc_model = OpenVoice.init_from_config(self.vc_config)
+        self.vc_model = OpenVoice(self.vc_config)
         self.vc_model.load_checkpoint(self.vc_config, checkpoint, eval=True)
         self.vc_config = self.vc_model.config
         self.output_sample_rate = self.vc_config.audio["output_sample_rate"]

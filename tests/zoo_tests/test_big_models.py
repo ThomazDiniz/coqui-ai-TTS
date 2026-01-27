@@ -56,7 +56,7 @@ def test_xtts_streaming(manager, device: torch.device):
     model_path, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v1.1")
     config = XttsConfig()
     config.load_json(config_path)
-    model = Xtts.init_from_config(config)
+    model = Xtts(config)
     model.load_checkpoint(config, checkpoint_dir=str(model_path.parent))
     model.to(device)
 
@@ -110,7 +110,7 @@ def test_xtts_v2_streaming(manager, device: torch.device):
     model_path, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
     config = XttsConfig()
     config.load_json(config_path)
-    model = Xtts.init_from_config(config)
+    model = Xtts(config)
     model.load_checkpoint(config, checkpoint_dir=str(model_path.parent))
     model.to(device)
 

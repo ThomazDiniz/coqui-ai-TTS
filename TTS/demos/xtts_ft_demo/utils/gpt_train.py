@@ -132,7 +132,7 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     )
 
     # init the model from config
-    model = GPTTrainer.init_from_config(config)
+    model = GPTTrainer(config)
 
     # load training samples
     train_samples, eval_samples = load_tts_samples(

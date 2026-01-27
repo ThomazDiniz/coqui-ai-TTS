@@ -80,7 +80,7 @@ def test_overflow_inference(get_overflow_model, create_inputs, config):
 def test_overflow_init_from_config(config, parameter_path):
     config.mel_statistics_parameter_path = parameter_path
     config.prenet_dim = 256
-    model = Overflow.init_from_config(config)
+    model = Overflow(config)
     assert model.prenet_dim == config.prenet_dim
 
 

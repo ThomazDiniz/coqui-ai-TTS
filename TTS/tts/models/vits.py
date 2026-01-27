@@ -19,7 +19,6 @@ from torch.utils.data.sampler import WeightedRandomSampler
 from trainer.io import load_fsspec
 from trainer.torch import DistributedSampler, DistributedSamplerWrapper
 from trainer.trainer_utils import get_optimizer, get_scheduler
-from typing_extensions import Self
 
 from TTS.tts.configs.shared_configs import BaseTTSConfig, CharactersConfig
 from TTS.tts.configs.vits_config import VitsArgs, VitsConfig
@@ -226,6 +225,19 @@ class Vits(BaseTTS):
         speaker_manager: None = None,
     ):
         super().__init__(config, ap, tokenizer, speaker_manager)
+
+        upsample_rate = torch.prod(torch.as_tensor(config.model_args.upsample_rates_decoder)).item()
+
+        if not config.model_args.encoder_sample_rate:
+            assert upsample_rate == config.audio.hop_length, (
+                f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {config.audio.hop_length}"
+            )
+        else:
+            encoder_to_vocoder_upsampling_factor = config.audio.sample_rate / config.model_args.encoder_sample_rate
+            effective_hop_length = config.audio.hop_length * encoder_to_vocoder_upsampling_factor
+            assert upsample_rate == effective_hop_length, (
+                f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {effective_hop_length}"
+            )
 
         self.init_multispeaker(self.config)
         self.init_multilingual(self.config)
@@ -1233,27 +1245,6 @@ class Vits(BaseTTS):
         if eval:
             self.eval()
             assert not self.training
-
-    @classmethod
-    def init_from_config(cls, config: "VitsConfig") -> Self:
-        """Initiate model from config
-
-        Args:
-            config (VitsConfig): Model config.
-        """
-        upsample_rate = torch.prod(torch.as_tensor(config.model_args.upsample_rates_decoder)).item()
-
-        if not config.model_args.encoder_sample_rate:
-            assert upsample_rate == config.audio.hop_length, (
-                f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {config.audio.hop_length}"
-            )
-        else:
-            encoder_to_vocoder_upsampling_factor = config.audio.sample_rate / config.model_args.encoder_sample_rate
-            effective_hop_length = config.audio.hop_length * encoder_to_vocoder_upsampling_factor
-            assert upsample_rate == effective_hop_length, (
-                f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {effective_hop_length}"
-            )
-        return cls(config)
 
     def export_onnx(self, output_path: str = "coqui_vits.onnx", verbose: bool = True):
         """Export model to ONNX format for inference

@@ -221,7 +221,7 @@ from TTS.tts.models.xtts import Xtts
 print("Loading model...")
 config = XttsConfig()
 config.load_json("/path/to/xtts/config.json")
-model = Xtts.init_from_config(config)
+model = Xtts(config)
 model.load_checkpoint(config, checkpoint_dir="/path/to/xtts/", use_deepspeed=True)
 model.cuda()
 
@@ -262,7 +262,7 @@ from TTS.tts.models.xtts import Xtts
 print("Loading model...")
 config = XttsConfig()
 config.load_json("/path/to/xtts/config.json")
-model = Xtts.init_from_config(config)
+model = Xtts(config)
 model.load_checkpoint(config, checkpoint_dir="/path/to/xtts/", use_deepspeed=True)
 model.cuda()
 
@@ -365,7 +365,7 @@ OUTPUT_WAV_PATH = "xtts-ft.wav"
 print("Loading model...")
 config = XttsConfig()
 config.load_json(CONFIG_PATH)
-model = Xtts.init_from_config(config)
+model = Xtts(config)
 model.load_checkpoint(config, checkpoint_path=XTTS_CHECKPOINT, vocab_path=TOKENIZER_PATH, use_deepspeed=False)
 model.cuda()
 

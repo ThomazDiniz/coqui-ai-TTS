@@ -146,7 +146,7 @@ def main():
     )
 
     # init the model from config
-    model = GPTTrainer.init_from_config(config)
+    model = GPTTrainer(config)
 
     # load training samples
     train_samples, eval_samples = load_tts_samples(

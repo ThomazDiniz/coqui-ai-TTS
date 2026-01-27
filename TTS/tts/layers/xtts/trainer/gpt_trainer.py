@@ -490,14 +490,3 @@ class GPTTrainer(BaseTTS):
         if eval:
             self.xtts.gpt.init_gpt_for_inference(kv_cache=self.args.kv_cache, use_deepspeed=False)
             self.eval()
-
-    @staticmethod
-    def init_from_config(config: "GPTTrainerConfig", samples: list[list] | list[dict] = None):
-        """Initiate model from config
-
-        Args:
-            config (GPTTrainerConfig): Model config.
-            samples (Union[List[List], List[Dict]]): Training samples to parse speaker ids for training.
-                Defaults to None.
-        """
-        return GPTTrainer(config)

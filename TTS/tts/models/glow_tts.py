@@ -51,7 +51,7 @@ class GlowTTS(BaseTTS):
         >>> from TTS.tts.configs.glow_tts_config import GlowTTSConfig
         >>> from TTS.tts.models.glow_tts import GlowTTS
         >>> config = GlowTTSConfig()
-        >>> model = GlowTTS.init_from_config(config)
+        >>> model = GlowTTS(config)
     """
 
     config: GlowTTSConfig

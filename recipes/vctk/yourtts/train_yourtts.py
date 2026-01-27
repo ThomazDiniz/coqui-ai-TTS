@@ -242,7 +242,7 @@ def main():
     )
 
     # Init the model
-    model = Vits.init_from_config(config)
+    model = Vits(config)
 
     # Init the trainer and 🚀
     trainer = Trainer(

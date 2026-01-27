@@ -1,4 +1,5 @@
 import os
+import warnings
 from abc import abstractmethod
 from typing import Any
 
@@ -25,6 +26,11 @@ class BaseTrainerModel(TrainerModel):
 
         Override this depending on your model.
         """
+        warnings.warn(
+            f"{cls.__name__}.init_from_config(config) is deprecated and will be removed soon, "
+            f"just initialize with {cls.__name__}(config)",
+            DeprecationWarning,
+        )
         return cls(config)
 
     @abstractmethod

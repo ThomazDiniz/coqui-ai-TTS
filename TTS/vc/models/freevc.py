@@ -485,9 +485,4 @@ class FreeVC(CloningMixin, BaseVC):
 
     def eval_step(): ...
 
-    @staticmethod
-    def init_from_config(config: FreeVCConfig) -> "FreeVC":
-        model = FreeVC(config)
-        return model
-
     def train_step(): ...
