@@ -99,7 +99,8 @@ def replace_symbols(text: str, lang: str | None = "en") -> str:
         Output:
             text: "si lavi cau, diguemho"
     """
-    text = text.replace(";", ",")
+    if lang != "el":  # Semicolons in Greek function as question marks
+        text = text.replace(";", ",")
     text = text.replace("-", " ") if lang != "ca" else text.replace("-", "")
     text = text.replace(":", ",")
     if lang == "en":
