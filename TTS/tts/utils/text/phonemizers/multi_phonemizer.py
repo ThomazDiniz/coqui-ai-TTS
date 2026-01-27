@@ -39,8 +39,8 @@ class MultiPhonemizer:
     def name() -> str:
         return "multi-phonemizer"
 
-    def phonemize(self, text: str, separator: str = "|", language: str = "") -> str:
-        if language == "":
+    def phonemize(self, text: str, separator: str = "|", language: str | None = None) -> str:
+        if language is None:
             raise ValueError("Language must be set for multi-phonemizer to phonemize.")
         return self.lang_to_phonemizer[language].phonemize(text, separator)
 

@@ -142,6 +142,7 @@ class Xtts(BaseTTS):
     """
 
     config: XttsConfig
+    tokenizer: VoiceBpeTokenizer
 
     def __init__(self, config: Coqpit):
         super().__init__(config, ap=None, tokenizer=None)

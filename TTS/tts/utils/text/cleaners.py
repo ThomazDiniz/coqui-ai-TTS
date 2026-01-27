@@ -5,6 +5,7 @@ https://github.com/keithito/tacotron/blob/master/text/cleaners.py
 """
 
 import re
+from typing import Protocol, cast
 from unicodedata import normalize
 
 from anyascii import anyascii
@@ -18,6 +19,13 @@ from .french.abbreviations import abbreviations_fr
 from .italian.abbreviations import abbreviations_it
 from .italian.number_norm import normalize_numbers as it_normalize_numbers
 from .italian.time_norm import expand_time_italian
+
+
+class TextCleaner(Protocol):
+    """Protocol that any text cleaner needs to implement."""
+
+    def __call__(self, text: str, lang: str | None) -> str: ...
+
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r"\s+")
@@ -62,7 +70,7 @@ def romanize(text: str, language: str | None = None) -> str:
             msg = "Package not installed: uroman (available in the `languages` extra)"
             raise ImportError(msg) from e
         _uroman = uroman.Uroman()
-    return _uroman.romanize_string(text, lcode=language)
+    return cast(str, _uroman.romanize_string(text, lcode=language))
 
 
 def remove_aux_symbols(text: str) -> str:
@@ -77,7 +85,7 @@ def replace_symbols(text: str, lang: str | None = "en") -> str:
       text:
        Input text.
       lang:
-        Lenguage identifier. ex: "en", "fr", "pt", "ca".
+        Language identifier. ex: "en", "fr", "pt", "ca".
 
     Returns:
       The modified text
