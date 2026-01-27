@@ -235,7 +235,7 @@ class Vits(BaseTTS):
         else:
             encoder_to_vocoder_upsampling_factor = config.audio.sample_rate / config.model_args.encoder_sample_rate
             effective_hop_length = config.audio.hop_length * encoder_to_vocoder_upsampling_factor
-            assert upsample_rate == effective_hop_length, (
+            assert config.model_args.interpolate_z or upsample_rate == effective_hop_length, (
                 f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {effective_hop_length}"
             )
 

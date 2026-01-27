@@ -81,8 +81,8 @@ class VitsArgs(ModelArgs):
             Dilation sizes of the residual blocks in the decoder network. Defaults to `[[1, 3, 5], [1, 3, 5], [1, 3, 5]]`.
 
         upsample_rates_decoder (List[int]):
-            Upsampling rates for each concecutive upsampling layer in the decoder network. The multiply of these
-            values must be equal to the kop length used for computing spectrograms. Defaults to `[8, 8, 2, 2]`.
+            Upsampling rates for each consecutive upsampling layer in the decoder network. The product of these
+            values must be equal to the hop length used for computing spectrograms. Defaults to `[8, 8, 2, 2]`.
 
         upsample_initial_channel_decoder (int):
             Number of hidden channels of the first upsampling convolution layer of the decoder network. Defaults to 512.
