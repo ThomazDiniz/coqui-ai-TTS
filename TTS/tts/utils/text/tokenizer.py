@@ -193,7 +193,7 @@ class TTSTokenizer:
             characters, new_config = characters.init_from_config(config)
 
         # set characters class
-        new_config.characters.characters_class = get_import_path(characters)
+        new_config.characters.characters_class = get_import_path(characters)  # ty: ignore[invalid-assignment]
 
         # init phonemizer
         phonemizer = None

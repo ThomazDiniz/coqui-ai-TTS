@@ -137,19 +137,19 @@ class CharactersConfig(Coqpit):
             Sort the characters in alphabetical order. Defaults to True.
     """
 
-    characters_class: str = None
+    characters_class: str | None = None
 
     # using BaseVocabulary
     vocab_dict: list[str] | None = None
 
     # using on BaseCharacters
-    pad: str = "<PAD>"
-    eos: str = None
-    bos: str = None
-    blank: str = None
-    characters: str = None
-    punctuations: str = None
-    phonemes: str = None
+    pad: str | None = "<PAD>"
+    eos: str | None = None
+    bos: str | None = None
+    blank: str | None = None
+    characters: str | None = None
+    punctuations: str | None = None
+    phonemes: str | None = None
     is_unique: bool = True  # for backwards compatibility of models trained with char sets with duplicates
     is_sorted: bool = True
 
@@ -307,15 +307,15 @@ class BaseTTSConfig(BaseTrainingConfig):
     _supports_cloning: bool = False
     # phoneme settings
     use_phonemes: bool = False
-    phonemizer: str = None
-    phoneme_language: str = None
+    phonemizer: str | None = None
+    phoneme_language: str | None = None
     compute_input_seq_cache: bool = False
-    text_cleaner: str = None
+    text_cleaner: str | None = None
     enable_eos_bos_chars: bool = False
     test_sentences_file: str = ""
     phoneme_cache_path: str = None
     # vocabulary parameters
-    characters: CharactersConfig = None
+    characters: CharactersConfig | None = None
     add_blank: bool = False
     # training params
     batch_group_size: int = 0

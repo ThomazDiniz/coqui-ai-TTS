@@ -76,7 +76,7 @@ dependencies = [
     "matplotlib>=3.8.4",
     # Coqui stack
     "coqui-tts-trainer>=0.3.0,<0.4.0",
-    "coqpit-config>=0.2.3,<0.3.0",
+    "coqpit-config>=0.2.4,<0.3.0",
     "monotonic-alignment-search>=0.1.0",
     "ko-speech-tools>=0.1.0",
     # Tortoise

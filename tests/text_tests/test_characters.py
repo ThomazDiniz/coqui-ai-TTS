@@ -53,66 +53,62 @@ class TestBaseVocabulary:
 
 
 class TestBaseCharacters:
-    @pytest.fixture
-    def characters_empty(self):
-        return BaseCharacters("", "", pad="", eos="", bos="", blank="", is_unique=True, is_sorted=True)
-
     def test_default_character_sets(self):
         """Test initiation of default character sets"""
         IPAPhonemes()
         Graphemes()
 
-    def test_unique(self, characters_empty):
+    def test_unique(self):
         """Test if the unique option works"""
-        characters_empty.characters = "abcc"
-        characters_empty.punctuations = ".,;:!? "
-        characters_empty.pad = "[PAD]"
-        characters_empty.eos = "[EOS]"
-        characters_empty.bos = "[BOS]"
-        characters_empty.blank = "[BLANK]"
-
-        assert characters_empty.num_chars == len(
-            ["[PAD]", "[EOS]", "[BOS]", "[BLANK]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
+        characters = BaseCharacters(
+            characters="bacc",
+            punctuations=".,;:!? ",
+            pad="[PAD]",
+            eos="[EOS]",
+            bos="[BOS]",
+            blank="[BLANK]",
+            is_unique=True,
         )
 
-    def test_unique_sorted(self, characters_empty):
+        assert characters.num_chars == len(
+            ["[PAD]", "[EOS]", "[BOS]", "[BLANK]", "b", "a", "c", ".", ",", ";", ":", "!", "?", " "]
+        )
+
+    def test_unique_sorted(self):
         """Test if the unique and sorted option works"""
-        characters_empty.characters = "cba"
-        characters_empty.punctuations = ".,;:!? "
-        characters_empty.pad = "[PAD]"
-        characters_empty.eos = "[EOS]"
-        characters_empty.bos = "[BOS]"
-        characters_empty.blank = "[BLANK]"
+        characters = BaseCharacters(
+            characters="ccba",
+            punctuations=".,;:!? ",
+            pad="[PAD]",
+            eos="[EOS]",
+            bos="[BOS]",
+            blank="[BLANK]",
+            is_unique=True,
+            is_sorted=True,
+        )
 
-        assert characters_empty.num_chars == len(
+        assert characters.num_chars == len(
             ["[PAD]", "[EOS]", "[BOS]", "[BLANK]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
         )
 
-    def test_setters_getters(self, characters_empty):
-        """Test the class setters behaves as expected"""
-        characters_empty.characters = "abc"
-        assert characters_empty._characters == "abc"
-        assert characters_empty.vocab == ["a", "b", "c"]
-
-        characters_empty.punctuations = ".,;:!? "
-        assert characters_empty._punctuations == ".,;:!? "
-        assert characters_empty.vocab == ["a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
-
-        characters_empty.pad = "[PAD]"
-        assert characters_empty._pad == "[PAD]"
-        assert characters_empty.vocab == ["[PAD]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
-
-        characters_empty.eos = "[EOS]"
-        assert characters_empty._eos == "[EOS]"
-        assert characters_empty.vocab == ["[PAD]", "[EOS]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
-
-        characters_empty.bos = "[BOS]"
-        assert characters_empty._bos == "[BOS]"
-        assert characters_empty.vocab == ["[PAD]", "[EOS]", "[BOS]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
-
-        characters_empty.blank = "[BLANK]"
-        assert characters_empty._blank == "[BLANK]"
-        assert characters_empty.vocab == [
+    def test_getters(self):
+        """Test the class getters behave as expected"""
+        characters = BaseCharacters(
+            characters="abc",
+            punctuations=".,;:!? ",
+            pad="[PAD]",
+            eos="[EOS]",
+            bos="[BOS]",
+            blank="[BLANK]",
+            is_unique=True,
+        )
+        assert characters.characters == "abc"
+        assert characters.punctuations == ".,;:!? "
+        assert characters.pad == "[PAD]"
+        assert characters.eos == "[EOS]"
+        assert characters.bos == "[BOS]"
+        assert characters.blank == "[BLANK]"
+        assert characters.vocab == [
             "[PAD]",
             "[EOS]",
             "[BOS]",
@@ -128,49 +124,52 @@ class TestBaseCharacters:
             "?",
             " ",
         ]
-        assert characters_empty.num_chars == len(
+        assert characters.num_chars == len(
             ["[PAD]", "[EOS]", "[BOS]", "[BLANK]", "a", "b", "c", ".", ",", ";", ":", "!", "?", " "]
         )
 
-        characters_empty.print_log()
+        characters.print_log()
 
-    def test_char_lookup(self, characters_empty):
+    def test_char_lookup(self):
         """Test char to ID and ID to char conversion"""
-        characters_empty.characters = "abc"
-        characters_empty.punctuations = ".,;:!? "
-        characters_empty.pad = "[PAD]"
-        characters_empty.eos = "[EOS]"
-        characters_empty.bos = "[BOS]"
-        characters_empty.blank = "[BLANK]"
+        characters = BaseCharacters(
+            characters="abc",
+            punctuations=".,;:!? ",
+            pad="[PAD]",
+            eos="[EOS]",
+            bos="[BOS]",
+            blank="[BLANK]",
+            is_unique=True,
+        )
 
         # char to ID
-        assert characters_empty.char_to_id("[PAD]") == 0
-        assert characters_empty.char_to_id("[EOS]") == 1
-        assert characters_empty.char_to_id("[BOS]") == 2
-        assert characters_empty.char_to_id("[BLANK]") == 3
-        assert characters_empty.char_to_id("a") == 4
-        assert characters_empty.char_to_id("b") == 5
-        assert characters_empty.char_to_id("c") == 6
-        assert characters_empty.char_to_id(".") == 7
-        assert characters_empty.char_to_id(",") == 8
-        assert characters_empty.char_to_id(";") == 9
-        assert characters_empty.char_to_id(":") == 10
-        assert characters_empty.char_to_id("!") == 11
-        assert characters_empty.char_to_id("?") == 12
-        assert characters_empty.char_to_id(" ") == 13
+        assert characters.char_to_id("[PAD]") == 0
+        assert characters.char_to_id("[EOS]") == 1
+        assert characters.char_to_id("[BOS]") == 2
+        assert characters.char_to_id("[BLANK]") == 3
+        assert characters.char_to_id("a") == 4
+        assert characters.char_to_id("b") == 5
+        assert characters.char_to_id("c") == 6
+        assert characters.char_to_id(".") == 7
+        assert characters.char_to_id(",") == 8
+        assert characters.char_to_id(";") == 9
+        assert characters.char_to_id(":") == 10
+        assert characters.char_to_id("!") == 11
+        assert characters.char_to_id("?") == 12
+        assert characters.char_to_id(" ") == 13
 
         # ID to char
-        assert characters_empty.id_to_char(0) == "[PAD]"
-        assert characters_empty.id_to_char(1) == "[EOS]"
-        assert characters_empty.id_to_char(2) == "[BOS]"
-        assert characters_empty.id_to_char(3) == "[BLANK]"
-        assert characters_empty.id_to_char(4) == "a"
-        assert characters_empty.id_to_char(5) == "b"
-        assert characters_empty.id_to_char(6) == "c"
-        assert characters_empty.id_to_char(7) == "."
-        assert characters_empty.id_to_char(8) == ","
-        assert characters_empty.id_to_char(9) == ";"
-        assert characters_empty.id_to_char(10) == ":"
-        assert characters_empty.id_to_char(11) == "!"
-        assert characters_empty.id_to_char(12) == "?"
-        assert characters_empty.id_to_char(13) == " "
+        assert characters.id_to_char(0) == "[PAD]"
+        assert characters.id_to_char(1) == "[EOS]"
+        assert characters.id_to_char(2) == "[BOS]"
+        assert characters.id_to_char(3) == "[BLANK]"
+        assert characters.id_to_char(4) == "a"
+        assert characters.id_to_char(5) == "b"
+        assert characters.id_to_char(6) == "c"
+        assert characters.id_to_char(7) == "."
+        assert characters.id_to_char(8) == ","
+        assert characters.id_to_char(9) == ";"
+        assert characters.id_to_char(10) == ":"
+        assert characters.id_to_char(11) == "!"
+        assert characters.id_to_char(12) == "?"
+        assert characters.id_to_char(13) == " "
