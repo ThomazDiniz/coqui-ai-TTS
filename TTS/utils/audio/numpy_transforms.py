@@ -8,7 +8,6 @@ import librosa
 import numpy as np
 import scipy
 import soundfile as sf
-from librosa import effects, filters, magphase, pyin
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def build_mel_basis(
     if mel_fmax is not None:
         assert mel_fmax <= sample_rate // 2
         assert mel_fmax - mel_fmin > 0
-    return filters.mel(sr=sample_rate, n_fft=fft_size, n_mels=num_mels, fmin=mel_fmin, fmax=mel_fmax)
+    return librosa.filters.mel(sr=sample_rate, n_fft=fft_size, n_mels=num_mels, fmin=mel_fmin, fmax=mel_fmax)
 
 
 def millisec_to_length(*, frame_length_ms: float, frame_shift_ms: float, sample_rate: int, **kwargs) -> tuple[int, int]:
@@ -290,7 +289,7 @@ def compute_f0(
         pitch_fmin = sample_rate / (win_length - 1) + 0.1
         logger.warning("pitch_fmin increased to %f", pitch_fmin)
 
-    f0, voiced_mask, _ = pyin(
+    f0, voiced_mask, _ = librosa.pyin(
         y=x.astype(np.double),
         fmin=pitch_fmin,
         fmax=pitch_fmax,
@@ -328,7 +327,7 @@ def compute_energy(y: np.ndarray, **kwargs) -> np.ndarray:
       >>> energy = ap.compute_energy(wav)
     """
     x = stft(y=y, **kwargs)
-    mag, _ = magphase(x)
+    mag, _ = librosa.magphase(x)
     return np.sqrt(np.sum(mag**2, axis=0))
 
 
@@ -376,7 +375,7 @@ def trim_silence(
     """Trim silent parts with a threshold and 0.01 sec margin."""
     margin = int(sample_rate * 0.01)
     wav = wav[margin:-margin]
-    return effects.trim(wav, top_db=trim_db, frame_length=win_length, hop_length=hop_length)[0]
+    return librosa.effects.trim(wav, top_db=trim_db, frame_length=win_length, hop_length=hop_length)[0]
 
 
 def volume_norm(*, x: np.ndarray, coef: float = 0.95, **kwargs) -> np.ndarray:

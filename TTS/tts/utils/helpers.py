@@ -1,6 +1,6 @@
 import numpy as np
+import scipy
 import torch
-from scipy.stats import betabinom
 from torch.nn import functional as F
 
 
@@ -220,7 +220,7 @@ def beta_binomial_prior_distribution(phoneme_count, mel_count, scaling_factor=1.
     mel_text_probs = []
     for i in range(1, M + 1):
         a, b = scaling_factor * i, scaling_factor * (M + 1 - i)
-        rv = betabinom(P, a, b)
+        rv = scipy.stats.betabinom(P, a, b)
         mel_i_prob = rv.pmf(x)
         mel_text_probs.append(mel_i_prob)
     return np.array(mel_text_probs)
