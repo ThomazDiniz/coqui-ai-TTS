@@ -3,7 +3,7 @@ import logging
 from TTS.tts.configs.shared_configs import BaseTTSConfig
 from TTS.tts.utils.text import cleaners
 from TTS.tts.utils.text.characters import BaseCharacters, Graphemes, IPAPhonemes
-from TTS.tts.utils.text.phonemizers import DEF_LANG_TO_PHONEMIZER, get_phonemizer_by_name
+from TTS.tts.utils.text.phonemizers import get_default_phonemizer, get_phonemizer_by_name
 from TTS.tts.utils.text.phonemizers.base import BasePhonemizer
 from TTS.tts.utils.text.phonemizers.multi_phonemizer import MultiPhonemizer
 from TTS.utils.generic_utils import get_import_path, import_class
@@ -212,15 +212,10 @@ class TTSTokenizer:
                 if "phonemizer" in config and config.phonemizer:
                     phonemizer = get_phonemizer_by_name(config.phonemizer, **phonemizer_kwargs)
                 else:
-                    try:
-                        phonemizer = get_phonemizer_by_name(
-                            DEF_LANG_TO_PHONEMIZER[config.phoneme_language], **phonemizer_kwargs
-                        )
-                        new_config.phonemizer = phonemizer.name()
-                    except KeyError as e:
-                        msg = f"""No phonemizer found for language {config.phoneme_language}.
-                            You may need to install a third party library for this language."""
-                        raise ValueError(msg) from e
+                    phonemizer = get_phonemizer_by_name(
+                        get_default_phonemizer(config.phoneme_language), **phonemizer_kwargs
+                    )
+                    new_config.phonemizer = phonemizer.name()
 
         return (
             TTSTokenizer(

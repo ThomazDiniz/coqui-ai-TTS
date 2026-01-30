@@ -7,6 +7,7 @@ https://github.com/huggingface/transformers/blob/main/src/transformers/utils/imp
 import importlib.metadata
 import importlib.util
 import logging
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Literal, overload
 
@@ -30,6 +31,47 @@ found in your environment. You can install it with Coqui's `codec` extra:
 pip install coqui-tts[codec]
 ```
 """
+
+
+@dataclass(frozen=True)
+class PhonemizeDeps:
+    """Dependencies for a phonemizer."""
+
+    packages: list[str]
+    extra: str
+
+    def import_error(self, name: str) -> str:
+        packages_str = ", ".join(self.packages)
+        return f"""
+Phonemizer `{name}` requires: {packages_str}. Install with Coqui's `{self.extra}` extra:
+```
+pip install coqui-tts[{self.extra}]
+```
+"""
+
+
+PHONEMIZER_DEPS: dict[str, PhonemizeDeps] = {
+    "bn_phonemizer": PhonemizeDeps(["bangla", "bnnumerizer", "bnunicodenormalizer"], "bn"),
+    "gruut": PhonemizeDeps(
+        [
+            "gruut",
+        ],
+        "languages",
+    ),
+    "ja_jp_phonemizer": PhonemizeDeps(
+        [
+            "fugashi",
+        ],
+        "ja",
+    ),
+    "ko_kr_phonemizer": PhonemizeDeps(
+        [
+            "mecab-ko",
+        ],
+        "ko",
+    ),
+    "zh_cn_phonemizer": PhonemizeDeps(["pypinyin", "spacy_pkuseg"], "zh"),
+}
 
 
 @overload
@@ -98,3 +140,12 @@ def is_torchaudio_available() -> bool:
 def is_torchcodec_available() -> bool:
     """Return whether Torchcodec is available in the environment."""
     return _is_package_available("torchcodec")
+
+
+@lru_cache
+def is_phonemizer_available(phonemizer: str) -> bool:
+    """Return whether packages for the given phonemizer are available in the environment."""
+    if phonemizer not in PHONEMIZER_DEPS:
+        msg = f"Not a valid phonemizer name: {phonemizer}"
+        raise ValueError(msg)
+    return all(_is_package_available(p) for p in PHONEMIZER_DEPS[phonemizer].packages)
