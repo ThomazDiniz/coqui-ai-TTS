@@ -15,7 +15,6 @@ from TTS.tts.models.base_tts import BaseTTS
 from TTS.tts.utils.helpers import generate_path, sequence_mask
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 
 logger = logging.getLogger(__name__)
 
@@ -395,6 +394,8 @@ class GlowTTS(BaseTTS):
         return outputs, loss_dict
 
     def _create_logs(self, batch, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         alignments = outputs["alignments"]
         text_input = batch["text_input"][:1] if batch["text_input"] is not None else None
         text_lengths = batch["text_lengths"]

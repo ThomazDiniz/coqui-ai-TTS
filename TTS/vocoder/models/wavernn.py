@@ -9,7 +9,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from TTS.tts.utils.visual import plot_spectrogram
 from TTS.utils.audio import AudioProcessor
 from TTS.utils.audio.numpy_transforms import mulaw_decode
 from TTS.vocoder.configs import WavernnConfig
@@ -508,6 +507,8 @@ class Wavernn(BaseVocoder):
         test_loader: "DataLoader",
         output: dict,  # pylint: disable=unused-argument
     ) -> tuple[dict, dict]:
+        from TTS.tts.utils.visual import plot_spectrogram
+
         ap = self.ap
         figures = {}
         audios = {}

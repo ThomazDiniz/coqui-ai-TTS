@@ -13,7 +13,6 @@ from TTS.tts.models.base_tacotron import BaseTacotron
 from TTS.tts.utils.measures import alignment_diagonal_score
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 from TTS.utils.capacitron_optimizer import CapacitronOptimizer
 
 
@@ -379,6 +378,8 @@ class Tacotron2(BaseTacotron):
 
     def _create_logs(self, batch, outputs):
         """Create dashboard log information."""
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         postnet_outputs = outputs["model_outputs"]
         alignments = outputs["alignments"]
         alignments_backward = outputs["alignments_backward"]

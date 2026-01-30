@@ -22,7 +22,6 @@ from TTS.tts.utils.data import get_length_balancer_weights
 from TTS.tts.utils.languages import LanguageManager, get_language_balancer_weights
 from TTS.tts.utils.speakers import SpeakerManager, get_speaker_balancer_weights
 from TTS.tts.utils.synthesis import inv_spectrogram
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 from TTS.utils.generic_utils import warn_synthesize_config_deprecated, warn_synthesize_speaker_id_deprecated
 from TTS.utils.voices import CloningMixin
 
@@ -411,6 +410,8 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
         Returns:
             Dictionary with test figures and audios to be projected to Tensorboard.
         """
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         logger.info("Synthesizing test sentences.")
         test_audios = {}
         test_figures = {}

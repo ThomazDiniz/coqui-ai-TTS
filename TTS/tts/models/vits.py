@@ -34,7 +34,6 @@ from TTS.tts.utils.languages import LanguageManager
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.characters import BaseCharacters, BaseVocabulary, _characters, _pad, _phonemes, _punctuations
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment
 from TTS.utils.audio.torch_transforms import spec_to_mel, wav_to_mel, wav_to_spec
 from TTS.utils.samplers import BucketBatchSampler
 from TTS.vocoder.models.hifigan_generator import HifiganGenerator
@@ -889,6 +888,8 @@ class Vits(BaseTTS):
         raise ValueError(" [!] Unexpected `optimizer_idx`.")
 
     def _create_logs(self, batch, outputs: list[dict[str, Any]]):
+        from TTS.tts.utils.visual import plot_alignment
+
         y_hat = outputs[1]["model_outputs"]
         y = outputs[1]["waveform_seg"]
         figures = plot_results(y_hat, y, self.ap)
@@ -908,6 +909,8 @@ class Vits(BaseTTS):
         Returns:
             Dictionary with test figures and audios to be projected to Tensorboard.
         """
+        from TTS.tts.utils.visual import plot_alignment
+
         logger.info("Synthesizing test sentences.")
         test_audios = {}
         test_figures = {}

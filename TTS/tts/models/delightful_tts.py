@@ -32,7 +32,6 @@ from TTS.tts.models.vits import load_audio
 from TTS.tts.utils.helpers import average_over_durations, compute_attn_prior, rand_segments, segment, sequence_mask
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_avg_pitch, plot_pitch, plot_spectrogram
 from TTS.utils.audio.numpy_transforms import build_mel_basis, compute_f0
 from TTS.utils.audio.numpy_transforms import db_to_amp as db_to_amp_numpy
 from TTS.utils.audio.numpy_transforms import mel_to_wav as mel_to_wav_numpy
@@ -674,6 +673,8 @@ class DelightfulTTS(BaseTTSE2E):
         raise ValueError(" [!] Unexpected `optimizer_idx`.")
 
     def _create_logs(self, batch, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_avg_pitch, plot_spectrogram
+
         figures, audios = {}, {}
 
         # encoder outputs
@@ -733,6 +734,8 @@ class DelightfulTTS(BaseTTSE2E):
         return figures, audios
 
     def plot_outputs(self, text, wav, alignment, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_avg_pitch, plot_pitch, plot_spectrogram
+
         figures = {}
         pitch_avg_pred = outputs["pitch"].cpu()
         energy_avg_pred = outputs["energy"].cpu()
@@ -850,6 +853,8 @@ class DelightfulTTS(BaseTTSE2E):
         Returns:
             Dictionary with test figures and audios to be projected to Tensorboard.
         """
+        from TTS.tts.utils.visual import plot_alignment
+
         logger.info("Synthesizing test sentences.")
         test_audios = {}
         test_figures = {}

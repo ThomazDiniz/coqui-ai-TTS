@@ -12,7 +12,6 @@ from TTS.tts.models.base_tacotron import BaseTacotron
 from TTS.tts.utils.measures import alignment_diagonal_score
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 from TTS.utils.capacitron_optimizer import CapacitronOptimizer
 
 
@@ -344,6 +343,8 @@ class Tacotron(BaseTacotron):
             torch.nn.utils.clip_grad_norm_(model_params_to_clip, self.capacitron_vae.capacitron_grad_clip)
 
     def _create_logs(self, batch, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         postnet_outputs = outputs["model_outputs"]
         decoder_outputs = outputs["decoder_outputs"]
         alignments = outputs["alignments"]

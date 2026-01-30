@@ -20,7 +20,6 @@ from TTS.tts.layers.overflow.plotting_utils import (
 from TTS.tts.models.base_tts import BaseTTS
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 from TTS.utils.generic_utils import format_aux_input, is_pytorch_at_least_2_4
 
 logger = logging.getLogger(__name__)
@@ -329,6 +328,8 @@ class Overflow(BaseTTS):
         trainer.model.update_mean_std(statistics)
 
     def _create_logs(self, batch, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         alignments, transition_vectors = outputs["alignments"], outputs["transition_vectors"]
         means = torch.stack(outputs["means"], dim=1)
 

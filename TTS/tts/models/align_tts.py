@@ -13,7 +13,6 @@ from TTS.tts.models.base_tts import BaseTTS
 from TTS.tts.utils.helpers import expand_encoder_outputs, generate_attention, sequence_mask
 from TTS.tts.utils.speakers import SpeakerManager
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
-from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
 
 
 class AlignTTS(BaseTTS):
@@ -282,6 +281,8 @@ class AlignTTS(BaseTTS):
         return outputs, loss_dict
 
     def _create_logs(self, batch, outputs):
+        from TTS.tts.utils.visual import plot_alignment, plot_spectrogram
+
         model_outputs = outputs["model_outputs"]
         alignments = outputs["alignments"]
         mel_input = batch["mel_input"]
