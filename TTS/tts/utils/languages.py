@@ -10,6 +10,11 @@ from TTS.tts.utils.managers import BaseIDManager
 logger = logging.getLogger(__name__)
 
 
+def normalize_language(language: str | None) -> str | None:
+    """Remove any region codes from the language, e.g. 'en-US' -> 'en'."""
+    return None if language is None else language.split("-")[0]
+
+
 class LanguageManager(BaseIDManager):
     """Manage the languages for multi-lingual 🐸TTS models.
 

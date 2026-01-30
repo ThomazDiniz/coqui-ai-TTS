@@ -15,6 +15,7 @@ from TTS.config import load_config
 from TTS.tts.configs.vits_config import VitsConfig
 from TTS.tts.models import setup_model as setup_tts_model
 from TTS.tts.models.vits import Vits
+from TTS.tts.utils.languages import normalize_language
 from TTS.utils.audio import AudioProcessor
 from TTS.utils.audio.numpy_transforms import save_wav
 from TTS.utils.generic_utils import optional_to_str
@@ -92,7 +93,6 @@ class Synthesizer(nn.Module):
         self.tts_model: BaseTTS | None = None
         self.vocoder_model: BaseVocoder | None = None
         self.vc_model: BaseVC | None = None
-        self.seg = self._get_segmenter("en")
         self.use_cuda = use_cuda
         if self.use_cuda:
             assert torch.cuda.is_available(), "CUDA is not availabe on this machine."
@@ -119,19 +119,21 @@ class Synthesizer(nn.Module):
             msg = "Need to initialize a TTS or VC model via tts_checkpoint/vc_checkpoint"
             raise RuntimeError(msg)
         self.voice_dir = Path(voice_dir) if voice_dir is not None else checkpoint_dir / "voices"
+        self._set_segmenters()
 
-    @staticmethod
-    def _get_segmenter(lang: str) -> pysbd.Segmenter:
-        """Get the sentence segmenter for the given language.
-
-        Args:
-            lang (str): target language code.
-
-        Returns:
-            [type]: [description]
-
-        """
-        return pysbd.Segmenter(language=lang, clean=True)
+    def _set_segmenters(self) -> None:
+        """Set the sentence segmenters for the model's languages."""
+        if self.tts_model is not None:
+            self.segmenter = {}
+            for language in self.tts_model.language_manager.language_names:
+                seg_language = normalize_language(language)
+                if seg_language not in pysbd.languages.LANGUAGE_CODES:
+                    logger.info(
+                        "Language `%s` not supported by pySBD, using English for sentence splitting.", seg_language
+                    )
+                    seg_language = "en"
+                self.segmenter[language] = pysbd.Segmenter(language=seg_language, clean=True)
+            logger.info("Segmenters initialized for: %s", self.segmenter.keys())
 
     def _load_vc(self, vc_checkpoint: str, vc_config_path: str, *, use_cuda: bool) -> None:
         """Load the voice conversion model.
@@ -272,17 +274,21 @@ class Synthesizer(nn.Module):
             vocoder_input = torch.tensor(vocoder_input).unsqueeze(0)
         return self.vocoder_model.inference(vocoder_input.to(vocoder_device))
 
-    def split_into_sentences(self, text: str) -> list[str]:
-        """Split give text into sentences.
+    def split_into_sentences(self, text: str, language: str | None = None) -> list[str]:
+        """Split given text into sentences.
 
         Args:
-            text (str): input text in string format.
+            text: input text in string format.
+            language: language of the text for language-dependent splitting.
 
         Returns:
             List[str]: list of sentences.
 
         """
-        return self.seg.segment(text)
+        if language is None:
+            language = self.tts_model.language_manager.language_names[0]
+        logger.info("Splitting into sentences (language: %s).", language)
+        return self.segmenter[language].segment(text)
 
     def save_wav(self, wav: list[int] | torch.Tensor | np.ndarray, path: str, pipe_out=None) -> None:
         """Save the waveform as a file.
@@ -338,7 +344,7 @@ class Synthesizer(nn.Module):
         self,
         text: str = "",
         speaker_name: str | None = "",
-        language_name: str = "",
+        language_name: str | None = None,
         speaker_wav: str | os.PathLike[Any] | list[str | os.PathLike[Any]] | None = None,
         style_wav=None,
         style_text=None,
@@ -386,8 +392,7 @@ class Synthesizer(nn.Module):
         if text:
             sens = [text]
             if split_sentences:
-                sens = self.split_into_sentences(text)
-                logger.info("Text split into sentences.")
+                sens = self.split_into_sentences(text, language_name)
             logger.info("Input: %s", sens)
 
         voice_dir = Path(d) if (d := kwargs.pop("voice_dir", None)) is not None else self.voice_dir
