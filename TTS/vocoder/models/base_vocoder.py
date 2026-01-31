@@ -26,7 +26,7 @@ class BaseVocoder(BaseTrainerModel):
     def __init__(self, config):
         super().__init__()
         self.config = cast(BaseVocoderConfig, config)
-        self.ap = AudioProcessor.init_from_config(self.config)
+        self.ap = AudioProcessor(self.config.audio)
         self._set_model_args()
 
     def _set_model_args(self) -> None:

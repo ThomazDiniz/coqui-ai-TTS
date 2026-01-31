@@ -277,7 +277,7 @@ def compute_f0(
         >>> from TTS.config import BaseAudioConfig
         >>> from TTS.utils.audio import AudioProcessor
         >>> conf = BaseAudioConfig(pitch_fmax=640, pitch_fmin=1)
-        >>> ap = AudioProcessor(**conf)
+        >>> ap = AudioProcessor(conf)
         >>> wav = ap.load_wav(WAV_FILE, sr=ap.sample_rate)[:5 * ap.sample_rate]
         >>> pitch = ap.compute_f0(wav)
     """
@@ -322,7 +322,7 @@ def compute_energy(y: np.ndarray, **kwargs) -> np.ndarray:
       >>> from TTS.config import BaseAudioConfig
       >>> from TTS.utils.audio import AudioProcessor
       >>> conf = BaseAudioConfig()
-      >>> ap = AudioProcessor(**conf)
+      >>> ap = AudioProcessor(conf)
       >>> wav = ap.load_wav(WAV_FILE, sr=ap.sample_rate)[:5 * ap.sample_rate]
       >>> energy = ap.compute_energy(wav)
     """

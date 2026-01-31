@@ -56,7 +56,7 @@ dataset_config_multi = BaseDatasetConfig(
 
 dataset_configs = [dataset_config_wav, dataset_config_mp3, dataset_config_flac]
 
-ap = AudioProcessor(**c.audio)
+ap = AudioProcessor(c.audio)
 max_loader_iter = 4
 
 DATA_EXIST = True

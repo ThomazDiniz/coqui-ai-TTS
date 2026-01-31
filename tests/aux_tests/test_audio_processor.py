@@ -14,7 +14,7 @@ conf = BaseAudioConfig(mel_fmax=8000, pitch_fmax=640, pitch_fmin=1)
 @pytest.fixture
 def ap():
     """Set up audio processor."""
-    return AudioProcessor(**conf)
+    return AudioProcessor(conf)
 
 
 norms = [
@@ -167,14 +167,14 @@ def test_normalize(ap):
     assert (x - x_).sum() < 1e-3
 
 
-def test_scaler(ap):
+def test_scaler():
     scaler_stats_path = os.path.join(get_tests_input_path(), "scale_stats.npy")
     conf.stats_path = scaler_stats_path
     conf.preemphasis = 0.0
     conf.do_trim_silence = True
     conf.signal_norm = True
 
-    ap = AudioProcessor(**conf)
+    ap = AudioProcessor(conf)
     mel_mean, mel_std, linear_mean, linear_std, _ = ap.load_stats(scaler_stats_path)
     ap.setup_scaler(mel_mean, mel_std, linear_mean, linear_std)
 

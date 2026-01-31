@@ -2,8 +2,9 @@ import os
 
 from trainer import Trainer, TrainerArgs
 
+from TTS.config.shared_configs import BaseAudioConfig
 from TTS.tts.configs.shared_configs import BaseDatasetConfig
-from TTS.tts.configs.vits_config import VitsAudioConfig, VitsConfig
+from TTS.tts.configs.vits_config import VitsConfig
 from TTS.tts.datasets import load_tts_samples
 from TTS.tts.models.vits import Vits
 
@@ -14,7 +15,7 @@ def main():
     dataset_config = BaseDatasetConfig(
         formatter="ljspeech", meta_file_train="metadata.csv", path=os.path.join(output_path, "../LJSpeech-1.1/")
     )
-    audio_config = VitsAudioConfig(
+    audio_config = BaseAudioConfig(
         sample_rate=22050, win_length=1024, hop_length=256, num_mels=80, mel_fmin=0, mel_fmax=None
     )
 

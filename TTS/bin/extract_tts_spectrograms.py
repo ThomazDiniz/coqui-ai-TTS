@@ -299,7 +299,7 @@ def main(arg_list: list[str] | None = None) -> None:
     config.audio.trim_silence = False
 
     # Audio processor
-    ap = AudioProcessor(**config.audio)
+    ap = AudioProcessor(config.audio)
 
     # load data instances
     meta_data_train, meta_data_eval = load_tts_samples(

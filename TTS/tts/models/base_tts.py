@@ -18,7 +18,6 @@ from TTS.config import get_from_config_or_model_args
 from TTS.config.shared_configs import BaseAudioConfig, ModelArgs
 from TTS.model import BaseTrainerModel
 from TTS.tts.configs.shared_configs import BaseTTSConfig
-from TTS.tts.configs.vits_config import VitsAudioConfig
 from TTS.tts.datasets.dataset import TTSDataset
 from TTS.tts.utils.data import get_length_balancer_weights
 from TTS.tts.utils.languages import LanguageManager, get_language_balancer_weights
@@ -63,8 +62,8 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
             self.tokenizer, config = TTSTokenizer.init_from_config(config)
         self.config = config
         # Some models use incompatible audio configs
-        if isinstance(self.config.audio, (BaseAudioConfig, VitsAudioConfig)):
-            self.ap = AudioProcessor.init_from_config(self.config)
+        if isinstance(self.config.audio, BaseAudioConfig):
+            self.ap = AudioProcessor(self.config.audio)
         self.speaker_manager = SpeakerManager.init_from_config(self.config)
         self.language_manager = LanguageManager.init_from_config(self.config)
         self._set_model_args()

@@ -363,7 +363,7 @@ def main(arg_list: list[str] | None = None):
     global meta_data_eval
     global train_classes
 
-    ap = AudioProcessor(**c.audio)
+    ap = AudioProcessor(c.audio)
     model = setup_encoder_model(c)
 
     optimizer = get_optimizer(c.optimizer, c.optimizer_params, c.lr, model)

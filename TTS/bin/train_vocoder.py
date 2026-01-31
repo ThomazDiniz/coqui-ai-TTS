@@ -54,7 +54,7 @@ def main(arg_list: list[str] | None = None):
         eval_samples, train_samples = load_wav_data(config.data_path, config.eval_split_size)
 
     # setup audio processor
-    ap = AudioProcessor(**config.audio)
+    ap = AudioProcessor(config.audio)
 
     # init the model from config
     model = setup_model(config)

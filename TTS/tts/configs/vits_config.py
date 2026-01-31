@@ -1,20 +1,7 @@
 from dataclasses import dataclass, field
 
-from coqpit import Coqpit
-
-from TTS.config.shared_configs import ModelArgs
+from TTS.config.shared_configs import BaseAudioConfig, ModelArgs
 from TTS.tts.configs.shared_configs import BaseTTSConfig
-
-
-@dataclass
-class VitsAudioConfig(Coqpit):
-    fft_size: int = 1024
-    sample_rate: int = 22050
-    win_length: int = 1024
-    hop_length: int = 256
-    num_mels: int = 80
-    mel_fmin: int = 0
-    mel_fmax: int | None = None
 
 
 @dataclass
@@ -262,8 +249,8 @@ class VitsConfig(BaseTTSConfig):
         model_args (VitsArgs):
             Model architecture arguments. Defaults to `VitsArgs()`.
 
-        audio (VitsAudioConfig):
-            Audio processing configuration. Defaults to `VitsAudioConfig()`.
+        audio (BaseAudioConfig):
+            Audio processing configuration. Defaults to `BaseAudioConfig()`.
 
         grad_clip (List):
             Gradient clipping thresholds for each optimizer. Defaults to `[1000.0, 1000.0]`.
@@ -349,7 +336,7 @@ class VitsConfig(BaseTTSConfig):
     model: str = "vits"
     # model specific params
     model_args: VitsArgs = field(default_factory=VitsArgs)
-    audio: VitsAudioConfig = field(default_factory=VitsAudioConfig)
+    audio: BaseAudioConfig = field(default_factory=BaseAudioConfig)
 
     # optimizer
     grad_clip: list[float] = field(default_factory=lambda: [1000, 1000])

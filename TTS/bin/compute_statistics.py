@@ -41,7 +41,7 @@ def main(arg_list: list[str] | None = None):
     CONFIG.audio.stats_path = None  # discard pre-defined stats
 
     # load audio processor
-    ap = AudioProcessor(**CONFIG.audio.to_dict())
+    ap = AudioProcessor(CONFIG.audio)
 
     # load the meta data of target dataset
     if args.data_path:

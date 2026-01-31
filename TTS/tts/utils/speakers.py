@@ -44,7 +44,7 @@ class SpeakerManager(EmbeddingManager):
 
     Examples:
         >>> # load audio processor and speaker encoder
-        >>> ap = AudioProcessor(**config.audio)
+        >>> ap = AudioProcessor(config.audio)
         >>> manager = SpeakerManager(encoder_model_path=encoder_model_path, encoder_config_path=encoder_config_path)
         >>> # load a sample audio and compute embedding
         >>> waveform = ap.load_wav(sample_wav_path)

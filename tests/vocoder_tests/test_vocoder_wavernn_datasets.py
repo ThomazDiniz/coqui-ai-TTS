@@ -33,7 +33,7 @@ def test_parametrized_wavernn_dataset(tmp_path, params):
     test_mel_feat_path = tmp_path / "mel"
     test_quant_feat_path = tmp_path / "quant"
 
-    ap = AudioProcessor(**C.audio)
+    ap = AudioProcessor(C.audio)
 
     C.batch_size = batch_size
     C.mode = mode

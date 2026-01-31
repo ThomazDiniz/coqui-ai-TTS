@@ -3,8 +3,9 @@ from glob import glob
 
 from trainer import Trainer, TrainerArgs
 
+from TTS.config.shared_configs import BaseAudioConfig
 from TTS.tts.configs.shared_configs import BaseDatasetConfig
-from TTS.tts.configs.vits_config import VitsArgs, VitsAudioConfig, VitsConfig
+from TTS.tts.configs.vits_config import VitsArgs, VitsConfig
 from TTS.tts.datasets import load_tts_samples
 from TTS.tts.models.vits import CharactersConfig, Vits
 
@@ -19,7 +20,7 @@ def main():
         for path in dataset_paths
     ]
 
-    audio_config = VitsAudioConfig(
+    audio_config = BaseAudioConfig(
         sample_rate=16000,
         win_length=1024,
         hop_length=256,

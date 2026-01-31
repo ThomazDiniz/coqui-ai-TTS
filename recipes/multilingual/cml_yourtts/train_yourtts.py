@@ -4,8 +4,8 @@ import torch
 from trainer import Trainer, TrainerArgs
 
 from TTS.bin.compute_embeddings import compute_embeddings
-from TTS.config.shared_configs import BaseDatasetConfig
-from TTS.tts.configs.vits_config import VitsArgs, VitsAudioConfig, VitsConfig
+from TTS.config.shared_configs import BaseAudioConfig, BaseDatasetConfig
+from TTS.tts.configs.vits_config import VitsArgs, VitsConfig
 from TTS.tts.datasets import load_tts_samples
 from TTS.tts.models.vits import CharactersConfig, Vits
 from TTS.utils.downloaders import download_libri_tts
@@ -174,7 +174,7 @@ def main():
         D_VECTOR_FILES.append(embeddings_file)
 
     # Audio config used in training.
-    audio_config = VitsAudioConfig(
+    audio_config = BaseAudioConfig(
         sample_rate=SAMPLE_RATE,
         hop_length=256,
         win_length=1024,

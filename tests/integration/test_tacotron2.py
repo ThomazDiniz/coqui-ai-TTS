@@ -104,7 +104,7 @@ def test_gst_train_step_file(base_config, device: torch.device):
     config.gst = GSTConfig()
 
     # Load mel from file
-    ap = AudioProcessor(**base_config.audio)
+    ap = AudioProcessor(base_config.audio)
     mel_spec = (
         torch.FloatTensor(ap.melspectrogram(ap.load_wav(WAV_FILE)))[:, :30].unsqueeze(0).transpose(1, 2).to(device)
     )

@@ -323,7 +323,7 @@ class EmbeddingManager(BaseIDManager):
         self.encoder_criterion = self.encoder.load_checkpoint(
             self.encoder_config, str(model_path), eval=True, use_cuda=use_cuda, cache=True
         )
-        self.encoder_ap = AudioProcessor(**self.encoder_config.audio)
+        self.encoder_ap = AudioProcessor(self.encoder_config.audio)
 
     @torch.inference_mode()
     def compute_embedding_from_clip(

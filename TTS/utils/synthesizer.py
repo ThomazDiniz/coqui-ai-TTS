@@ -236,7 +236,7 @@ class Synthesizer(nn.Module):
         """
         self.vocoder_config = load_config(model_config)
         self.output_sample_rate = self.vocoder_config.audio["sample_rate"]
-        self.vocoder_ap = AudioProcessor(**self.vocoder_config.audio)
+        self.vocoder_ap = AudioProcessor(self.vocoder_config.audio)
         self.vocoder_model = setup_vocoder_model(self.vocoder_config)
         self.vocoder_model.load_checkpoint(self.vocoder_config, model_file, eval=True)
         if use_cuda:

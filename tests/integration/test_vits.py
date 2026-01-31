@@ -5,7 +5,8 @@ import torch
 
 from tests import assert_parameters_change, assert_parameters_equal
 from tests.tts_tests.test_vits import _create_batch
-from TTS.tts.configs.vits_config import VitsArgs, VitsAudioConfig, VitsConfig
+from TTS.config.shared_configs import BaseAudioConfig
+from TTS.tts.configs.vits_config import VitsArgs, VitsConfig
 from TTS.tts.models.vits import Vits
 
 
@@ -70,7 +71,7 @@ def test_train_step(encoder_sample_rate, interpolate_z, upsample_rates, sample_r
         model_args.encoder_sample_rate = encoder_sample_rate
         model_args.interpolate_z = interpolate_z
         model_args.upsample_rates_decoder = upsample_rates
-        audio_config = VitsAudioConfig(sample_rate=sample_rate)
+        audio_config = BaseAudioConfig(sample_rate=sample_rate)
         config = VitsConfig(model_args=model_args, audio=audio_config)
     else:
         config = VitsConfig(model_args=model_args)

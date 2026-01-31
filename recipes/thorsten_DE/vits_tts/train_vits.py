@@ -2,8 +2,9 @@ import os
 
 from trainer import Trainer, TrainerArgs
 
+from TTS.config.shared_configs import BaseAudioConfig
 from TTS.tts.configs.shared_configs import BaseDatasetConfig
-from TTS.tts.configs.vits_config import VitsAudioConfig, VitsConfig
+from TTS.tts.configs.vits_config import VitsConfig
 from TTS.tts.datasets import load_tts_samples
 from TTS.tts.models.vits import Vits
 from TTS.utils.downloaders import download_thorsten_de
@@ -21,7 +22,7 @@ def main():
         print("Downloading dataset")
         download_thorsten_de(os.path.split(os.path.abspath(dataset_config.path))[0])
 
-    audio_config = VitsAudioConfig(
+    audio_config = BaseAudioConfig(
         sample_rate=22050,
         win_length=1024,
         hop_length=256,
