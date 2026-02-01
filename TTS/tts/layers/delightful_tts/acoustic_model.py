@@ -165,7 +165,6 @@ class AcousticModel(torch.nn.Module):
     def init_multispeaker(self, args: Coqpit):  # pylint: disable=unused-argument
         """Init for multi-speaker training."""
         self.embedded_speaker_dim = 0
-        self.num_speakers = self.args.num_speakers
         self.audio_transform = None
 
         if self.speaker_manager:

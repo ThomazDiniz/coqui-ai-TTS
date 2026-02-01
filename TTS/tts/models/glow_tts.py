@@ -112,9 +112,6 @@ class GlowTTS(BaseTTS):
             config: Model configuration.
         """
         self.embedded_speaker_dim = 0
-        # set number of speakers - if num_speakers is set in config, use it, otherwise use speaker_manager
-        if self.speaker_manager is not None:
-            self.num_speakers = self.speaker_manager.num_speakers
         # set ultimate speaker embedding size
         if config.use_d_vector_file:
             self.embedded_speaker_dim = (

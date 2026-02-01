@@ -59,7 +59,6 @@ class DelightfulTtsArgs(ModelArgs):
     n_bins_variance_adaptor: int = 256
     emb_kernel_size_variance_adaptor: int = 3
     use_speaker_embedding: bool = False
-    num_speakers: int = 0
     speakers_file: str = None
     d_vector_file: str = None
     speaker_embedding_channels: int = 384
@@ -123,7 +122,6 @@ class DelightfulTTSConfig(BaseTTSConfig):
         compute_f0 (bool): Whether to compute F0 values.
         f0_cache_path (str): Path to the F0 cache.
         attn_prior_cache_path (str): Path to the attention prior cache.
-        num_speakers (int): Number of speakers.
         use_speaker_embedding (bool): Whether to use speaker embedding.
         speakers_file (str): Path to the speaker file.
         speaker_embedding_channels (int): Number of channels for the speaker embedding.
@@ -196,7 +194,6 @@ class DelightfulTTSConfig(BaseTTSConfig):
 
     # multi-speaker settings
     # use speaker embedding layer
-    num_speakers: int = 0
     use_speaker_embedding: bool = False
     speakers_file: str = None
     speaker_embedding_channels: int = 256
@@ -218,10 +215,6 @@ class DelightfulTTSConfig(BaseTTSConfig):
     )
 
     def __post_init__(self):
-        # Pass multi-speaker parameters to the model args as `model.init_multispeaker()` looks for it there.
-        if self.num_speakers > 0:
-            self.model_args.num_speakers = self.num_speakers
-
         # speaker embedding settings
         if self.use_speaker_embedding:
             self.model_args.use_speaker_embedding = True

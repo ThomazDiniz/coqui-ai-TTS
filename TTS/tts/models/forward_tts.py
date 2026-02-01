@@ -139,9 +139,6 @@ class ForwardTTS(BaseTTS):
             raise ValueError(
                 " > SpeakerManager is not provided. You must provide the SpeakerManager before initializing a multi-speaker model."
             )
-        # set number of speakers
-        if self.speaker_manager is not None:
-            self.num_speakers = self.speaker_manager.num_speakers
         # init d-vector embedding
         if config.use_d_vector_file:
             self.embedded_speaker_dim = config.d_vector_dim

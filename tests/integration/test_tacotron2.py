@@ -5,7 +5,7 @@ import pytest
 import torch
 from torch import nn, optim
 
-from tests import assert_parameters_change, assert_parameters_equal, get_tests_input_path
+from tests import assert_parameters_change, assert_parameters_equal, get_test_speakers, get_tests_input_path
 from tests.integration.test_tacotron import create_stop_targets
 from TTS.tts.configs.shared_configs import CapacitronVAEConfig, GSTConfig
 from TTS.tts.configs.tacotron2_config import Tacotron2Config
@@ -19,7 +19,7 @@ WAV_FILE = os.path.join(get_tests_input_path(), "example_1.wav")
 @pytest.fixture
 def base_config():
     """Base Tacotron2 config for testing."""
-    return Tacotron2Config(num_chars=32, num_speakers=5, out_channels=80, decoder_output_dim=80)
+    return Tacotron2Config(num_chars=32, speakers=get_test_speakers(5), out_channels=80, decoder_output_dim=80)
 
 
 def create_tacotron2_inputs(config, device: torch.device, batch_size=8, max_seq_len=128, max_mel_len=30):
@@ -62,7 +62,6 @@ def test_train_step(base_config, device: torch.device):
     """Test vanilla Tacotron2 model."""
     config = base_config.copy()
     config.use_speaker_embedding = False
-    config.num_speakers = 1
     train_and_verify_updates(config, device)
 
 
@@ -70,7 +69,7 @@ def test_multispeaker_train_step(base_config, device: torch.device):
     """Test multi-speaker Tacotron2 with speaker embedding layer."""
     config = base_config.copy()
     config.use_speaker_embedding = True
-    config.num_speakers = 5
+    config.speakers = get_test_speakers(5)
     config.d_vector_dim = 55
 
     speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
@@ -81,7 +80,7 @@ def test_gst_train_step_random(base_config, device: torch.device):
     """Test multi-speaker Tacotron2 with Global Style Token and Speaker Embedding using random mel."""
     config = base_config.copy()
     config.use_speaker_embedding = True
-    config.num_speakers = 10
+    config.speakers = get_test_speakers(10)
     config.use_gst = True
     config.gst = GSTConfig()
 
@@ -99,7 +98,7 @@ def test_gst_train_step_file(base_config, device: torch.device):
     """Test multi-speaker Tacotron2 with Global Style Token using mel from file."""
     config = base_config.copy()
     config.use_speaker_embedding = True
-    config.num_speakers = 10
+    config.speakers = get_test_speakers(10)
     config.use_gst = True
     config.gst = GSTConfig()
 
@@ -145,7 +144,7 @@ def test_capacitron_train_step(device: torch.device):
     """Test Tacotron2 with Capacitron VAE."""
     config = Tacotron2Config(
         num_chars=32,
-        num_speakers=10,
+        speakers=get_test_speakers(10),
         use_speaker_embedding=True,
         out_channels=80,
         decoder_output_dim=80,

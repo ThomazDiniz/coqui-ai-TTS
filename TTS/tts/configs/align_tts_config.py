@@ -26,8 +26,6 @@ class AlignTTSArgs(ModelArgs):
             dropout rate in transformer layers.
         length_scale (int, optional):
             coefficient to set the speech speed. <1 slower, >1 faster. Defaults to 1.
-        num_speakers (int, optional):
-            number of speakers for multi-speaker training. Defaults to 0.
         external_c (bool, optional):
             enable external speaker embeddings. Defaults to False.
         c_in_channels (int, optional):
@@ -47,7 +45,6 @@ class AlignTTSArgs(ModelArgs):
         default_factory=lambda: {"hidden_channels_ffn": 1024, "num_heads": 2, "num_layers": 6, "dropout_p": 0.1}
     )
     length_scale: float = 1.0
-    num_speakers: int = 0
     use_speaker_embedding: bool = False
     use_d_vector_file: bool = False
     d_vector_dim: int = 0

@@ -5,7 +5,7 @@ import pytest
 import torch
 from trainer.logging.tensorboard_logger import TensorboardLogger
 
-from tests import get_tests_data_path, get_tests_input_path, get_tests_output_path
+from tests import get_test_speakers, get_tests_data_path, get_tests_input_path, get_tests_output_path
 from TTS.tts.configs.vits_config import VitsArgs, VitsConfig
 from TTS.tts.models.vits import Vits, load_audio
 from TTS.utils.audio.torch_transforms import amp_to_db, db_to_amp, spec_to_mel, wav_to_mel, wav_to_spec
@@ -111,17 +111,16 @@ def test_load_audio():
 
 
 def test_init_multispeaker():
-    num_speakers = 10
-    args = VitsArgs(num_speakers=num_speakers, use_speaker_embedding=True)
+    args = VitsArgs(use_speaker_embedding=True)
+    model = Vits(VitsConfig(model_args=args, speakers=get_test_speakers(10)))
+    assert hasattr(model, "emb_g")
+
+    args = VitsArgs(use_speaker_embedding=True)
     model = Vits(VitsConfig(model_args=args))
     assert hasattr(model, "emb_g")
 
-    args = VitsArgs(num_speakers=0, use_speaker_embedding=True)
-    model = Vits(VitsConfig(model_args=args))
-    assert not hasattr(model, "emb_g")
-
-    args = VitsArgs(num_speakers=10, use_speaker_embedding=False)
-    model = Vits(VitsConfig(model_args=args))
+    args = VitsArgs(use_speaker_embedding=False)
+    model = Vits(VitsConfig(model_args=args, speakers=get_test_speakers(10)))
     assert not hasattr(model, "emb_g")
 
     args = VitsArgs(d_vector_dim=101, use_d_vector_file=True)
@@ -168,8 +167,8 @@ def test_voice_conversion():
     spec_len = 101
     spec_effective_len = 50
 
-    args = VitsArgs(num_speakers=num_speakers, use_speaker_embedding=True)
-    model = Vits(VitsConfig(model_args=args))
+    args = VitsArgs(use_speaker_embedding=True)
+    model = Vits(VitsConfig(model_args=args, speakers=get_test_speakers(num_speakers)))
 
     ref_inp = torch.randn(1, 513, spec_len)
     ref_inp_len = torch.randint(1, spec_effective_len, (1,))
@@ -186,8 +185,7 @@ def test_voice_conversion():
 
 
 def test_forward(device):
-    num_speakers = 0
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True)
+    config = VitsConfig(use_speaker_embedding=True)
     config.model_args.spec_segment_size = 10
     input_dummy, input_lengths, _, spec, spec_lengths, waveform = _create_inputs(config, device)
     model = Vits(config).to(device)
@@ -198,7 +196,7 @@ def test_forward(device):
 def test_multispeaker_forward(device):
     num_speakers = 10
 
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True)
+    config = VitsConfig(speakers=get_test_speakers(num_speakers), use_speaker_embedding=True)
     config.model_args.spec_segment_size = 10
 
     input_dummy, input_lengths, _, spec, spec_lengths, waveform = _create_inputs(config, device)
@@ -237,7 +235,7 @@ def test_multilingual_forward(device, language_ids_file):
     batch_size = 2
 
     args = VitsArgs(language_ids_file=language_ids_file, use_language_embedding=True, spec_segment_size=10)
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True, model_args=args)
+    config = VitsConfig(speakers=get_test_speakers(num_speakers), use_speaker_embedding=True, model_args=args)
 
     input_dummy, input_lengths, _, spec, spec_lengths, waveform = _create_inputs(config, device, batch_size=batch_size)
     speaker_ids = torch.randint(0, num_speakers, (batch_size,)).long().to(device)
@@ -269,7 +267,7 @@ def test_secl_forward(device, language_ids_file, encoder_model_path, encoder_con
         speaker_encoder_model_path=encoder_model_path,
         speaker_encoder_config_path=encoder_config_path,
     )
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True, model_args=args)
+    config = VitsConfig(speakers=get_test_speakers(num_speakers), use_speaker_embedding=True, model_args=args)
     config.audio.sample_rate = 16000
 
     input_dummy, input_lengths, _, spec, spec_lengths, waveform = _create_inputs(config, device, batch_size=batch_size)
@@ -290,8 +288,7 @@ def test_secl_forward(device, language_ids_file, encoder_model_path, encoder_con
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_inference(device, batch_size):
-    num_speakers = 0
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True)
+    config = VitsConfig(use_speaker_embedding=True)
     model = Vits(config).to(device)
 
     input_dummy, input_lengths, *_ = _create_inputs(config, device, batch_size=batch_size)
@@ -303,7 +300,7 @@ def test_inference(device, batch_size):
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_multispeaker_inference(device, batch_size):
     num_speakers = 10
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True)
+    config = VitsConfig(speakers=get_test_speakers(num_speakers), use_speaker_embedding=True)
     model = Vits(config).to(device)
 
     input_dummy, input_lengths, *_ = _create_inputs(config, device, batch_size=batch_size)
@@ -320,7 +317,7 @@ def test_multilingual_inference(device, language_ids_file, batch_size):
     num_speakers = 10
     num_langs = 3
     args = VitsArgs(language_ids_file=language_ids_file, use_language_embedding=True, spec_segment_size=10)
-    config = VitsConfig(num_speakers=num_speakers, use_speaker_embedding=True, model_args=args)
+    config = VitsConfig(speakers=get_test_speakers(num_speakers), use_speaker_embedding=True, model_args=args)
     model = Vits(config).to(device)
 
     input_dummy, input_lengths, *_ = _create_inputs(config, device, batch_size=batch_size)
@@ -410,11 +407,11 @@ def test_init_from_config(device):
     config = VitsConfig(model_args=VitsArgs(num_chars=32))
     model = Vits(config).to(device)
 
-    config = VitsConfig(model_args=VitsArgs(num_chars=32, num_speakers=2))
+    config = VitsConfig(model_args=VitsArgs(num_chars=32), speakers=get_test_speakers(2))
     model = Vits(config).to(device)
     assert not hasattr(model, "emb_g")
 
-    config = VitsConfig(model_args=VitsArgs(num_chars=32, num_speakers=2, use_speaker_embedding=True))
+    config = VitsConfig(model_args=VitsArgs(num_chars=32, use_speaker_embedding=True), speakers=get_test_speakers(2))
     model = Vits(config).to(device)
     assert model.num_speakers == 2
     assert hasattr(model, "emb_g")
@@ -422,10 +419,9 @@ def test_init_from_config(device):
     config = VitsConfig(
         model_args=VitsArgs(
             num_chars=32,
-            num_speakers=2,
             use_speaker_embedding=True,
             speakers_file=str(Path(get_tests_data_path()) / "ljspeech" / "speakers.json"),
-        )
+        ),
     )
     model = Vits(config).to(device)
     assert model.num_speakers == 10

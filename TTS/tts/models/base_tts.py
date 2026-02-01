@@ -95,6 +95,16 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
         else:
             raise ValueError("config must be either a *Config or *Args")
 
+    @property
+    def num_speakers(self) -> int:
+        """Return the number of speakers of the model.
+
+        Defaults to 1 if a speaker manager or config.num_speakers are not defined.
+        """
+        if self.speaker_manager is not None:
+            return self.speaker_manager.num_speakers
+        return self.config.get("num_speakers", 1)
+
     def init_multispeaker(self, config: Coqpit):
         """Set up for multi-speaker TTS.
 
@@ -113,12 +123,6 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
         Args:
             config (Coqpit): Model configuration.
         """
-        # set number of speakers
-        if self.speaker_manager is not None:
-            self.num_speakers = self.speaker_manager.num_speakers
-        elif hasattr(config, "num_speakers"):
-            self.num_speakers = config.num_speakers
-
         # set ultimate speaker embedding size
         if config.use_speaker_embedding or config.use_d_vector_file:
             self.embedded_speaker_dim = (

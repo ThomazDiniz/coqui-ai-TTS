@@ -334,11 +334,7 @@ class Vits(BaseTTS):
             config: Model configuration.
         """
         self.embedded_speaker_dim = 0
-        self.num_speakers = self.args.num_speakers
         self.audio_transform = None
-
-        if self.speaker_manager:
-            self.num_speakers = self.speaker_manager.num_speakers
 
         if self.args.use_speaker_embedding:
             self._init_speaker_embedding()

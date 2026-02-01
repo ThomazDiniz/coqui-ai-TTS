@@ -92,9 +92,6 @@ class ForwardTTSArgs(ModelArgs):
         max_duration (int):
             Maximum duration accepted by the model. Defaults to 75.
 
-        num_speakers (int):
-            Number of speakers for the speaker embedding layer. Defaults to 0.
-
         speakers_file (str):
             Path to the speaker mapping file for the Speaker Manager. Defaults to None.
 
@@ -145,7 +142,6 @@ class ForwardTTSArgs(ModelArgs):
     )
     detach_duration_predictor: bool = False
     max_duration: int = 75
-    num_speakers: int = 1
     use_speaker_embedding: bool = False
     speakers_file: str = None
     use_d_vector_file: bool = False

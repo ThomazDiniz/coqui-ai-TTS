@@ -110,9 +110,6 @@ class VitsArgs(ModelArgs):
         use_speaker_embedding (bool):
             Enable/Disable speaker embedding for multi-speaker models. Defaults to False.
 
-        num_speakers (int):
-            Number of speakers for the speaker embedding layer. Defaults to 0.
-
         speakers_file (str):
             Path to the speaker mapping file for the Speaker Manager. Defaults to None.
 
@@ -213,7 +210,6 @@ class VitsArgs(ModelArgs):
     init_discriminator: bool = True
     use_spectral_norm_disriminator: bool = False
     use_speaker_embedding: bool = False
-    num_speakers: int = 0
     speakers_file: str | None = None
     d_vector_file: str | list[str] | None = None
     speaker_embedding_channels: int = 256
@@ -385,7 +381,6 @@ class VitsConfig(BaseTTSConfig):
 
     # multi-speaker settings
     # use speaker embedding layer
-    num_speakers: int = 0
     use_speaker_embedding: bool = False
     speakers_file: str | None = None
     speaker_embedding_channels: int = 256

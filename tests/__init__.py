@@ -42,6 +42,11 @@ def get_tests_output_path():
     return path
 
 
+def get_test_speakers(n: int) -> list[str]:
+    """Return a list of `n` speaker names."""
+    return [f"speaker_{i}" for i in range(n)]
+
+
 def run_main(main_func: Callable, args: list[str] | None = None, expected_code: int = 0):
     with pytest.raises(SystemExit) as exc_info:
         main_func(args)

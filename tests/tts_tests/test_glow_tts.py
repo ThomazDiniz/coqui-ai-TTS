@@ -7,7 +7,7 @@ from torch import optim
 from trainer.generic_utils import count_parameters
 from trainer.logging.tensorboard_logger import TensorboardLogger
 
-from tests import assert_parameters_change, get_tests_data_path, get_tests_output_path
+from tests import assert_parameters_change, get_test_speakers, get_tests_data_path, get_tests_output_path
 from TTS.tts.configs.glow_tts_config import GlowTTSConfig
 from TTS.tts.layers.losses import GlowTTSLoss
 from TTS.tts.models.glow_tts import GlowTTS
@@ -37,7 +37,7 @@ class TestGlowTTS(unittest.TestCase):
         model = GlowTTS(config)
         # speaker embedding with default speaker_embedding_dim
         config.use_speaker_embedding = True
-        config.num_speakers = 5
+        config.speakers = get_test_speakers(5)
         config.d_vector_dim = None
         model.init_multispeaker(config)
         self.assertEqual(model.c_in_channels, model.hidden_channels_enc)
@@ -128,7 +128,7 @@ class TestGlowTTS(unittest.TestCase):
         config = GlowTTSConfig(
             num_chars=32,
             use_speaker_embedding=True,
-            num_speakers=24,
+            speakers=get_test_speakers(24),
         )
         model = GlowTTS(config).to(device)
         model.train()
@@ -194,7 +194,7 @@ class TestGlowTTS(unittest.TestCase):
         config = GlowTTSConfig(
             num_chars=32,
             use_speaker_embedding=True,
-            num_speakers=24,
+            speakers=get_test_speakers(24),
         )
         model = GlowTTS(config).to(device)
         outputs = model.inference(input_dummy, {"x_lengths": input_lengths, "speaker_ids": speaker_ids})
@@ -314,19 +314,18 @@ class TestGlowTTS(unittest.TestCase):
         config = GlowTTSConfig(num_chars=32)
         model = GlowTTS(config).to(device)
 
-        config = GlowTTSConfig(num_chars=32, num_speakers=2)
+        config = GlowTTSConfig(num_chars=32, speakers=get_test_speakers(2))
         model = GlowTTS(config).to(device)
-        self.assertTrue(model.num_speakers == 2)
+        self.assertTrue(model.num_speakers == 1)
         self.assertTrue(not hasattr(model, "emb_g"))
 
-        config = GlowTTSConfig(num_chars=32, num_speakers=2, use_speaker_embedding=True)
+        config = GlowTTSConfig(num_chars=32, speakers=get_test_speakers(2), use_speaker_embedding=True)
         model = GlowTTS(config).to(device)
         self.assertTrue(model.num_speakers == 2)
         self.assertTrue(hasattr(model, "emb_g"))
 
         config = GlowTTSConfig(
             num_chars=32,
-            num_speakers=2,
             use_speaker_embedding=True,
             speakers_file=os.path.join(get_tests_data_path(), "ljspeech", "speakers.json"),
         )
