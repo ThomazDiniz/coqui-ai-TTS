@@ -160,6 +160,7 @@ conflicts = [
 ]
 
 [tool.uv.sources]
+coqpit-config = { git = "https://github.com/idiap/coqui-ai-coqpit", branch = "literal" }
 torch = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cuda", extra = "cuda" },
