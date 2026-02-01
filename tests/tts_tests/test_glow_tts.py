@@ -33,13 +33,12 @@ class TestGlowTTS(unittest.TestCase):
         return input_dummy, input_lengths, mel_spec, mel_lengths, speaker_ids
 
     def test_init_multispeaker(self):
-        config = GlowTTSConfig(num_chars=32)
-        model = GlowTTS(config)
         # speaker embedding with default speaker_embedding_dim
-        config.use_speaker_embedding = True
-        config.speakers = get_test_speakers(5)
-        config.d_vector_dim = None
-        model.init_multispeaker(config)
+        config = GlowTTSConfig(
+            num_chars=32, use_speaker_embedding=True, speakers=get_test_speakers(5), d_vector_dim=None
+        )
+        model = GlowTTS(config)
+        model.init_multispeaker()
         self.assertEqual(model.c_in_channels, model.hidden_channels_enc)
         # use speaker embedddings by the provided speaker_manager
         config = GlowTTSConfig(num_chars=32)

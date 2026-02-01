@@ -116,8 +116,8 @@ def test_init_multispeaker():
     assert hasattr(model, "emb_g")
 
     args = VitsArgs(use_speaker_embedding=True)
-    model = Vits(VitsConfig(model_args=args))
-    assert hasattr(model, "emb_g")
+    with pytest.raises(ValueError, match="No SpeakerManager provided"):
+        model = Vits(VitsConfig(model_args=args))
 
     args = VitsArgs(use_speaker_embedding=False)
     model = Vits(VitsConfig(model_args=args, speakers=get_test_speakers(10)))

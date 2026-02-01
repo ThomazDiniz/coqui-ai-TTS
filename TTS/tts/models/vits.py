@@ -239,7 +239,7 @@ class Vits(BaseTTS):
                 f" [!] Product of upsample rates must be equal to the hop length - {upsample_rate} vs {effective_hop_length}"
             )
 
-        self.init_multispeaker(self.config)
+        self.init_multispeaker()
         self.init_multilingual(self.config)
         self.init_upsampling()
 
@@ -324,23 +324,16 @@ class Vits(BaseTTS):
                 use_spectral_norm=self.args.use_spectral_norm_disriminator,
             )
 
-    def init_multispeaker(self, config: Coqpit):
-        """Initialize multi-speaker modules of a model. A model can be trained either with a speaker embedding layer
+    def init_multispeaker(self) -> None:
+        """Initialize multi-speaker modules of a model.
+
+        A model can be trained either with a speaker embedding layer
         or with external `d_vectors` computed from a speaker encoder model.
 
         You must provide a `speaker_manager` at initialization to set up the multi-speaker modules.
-
-        Args:
-            config: Model configuration.
         """
-        self.embedded_speaker_dim = 0
+        super().init_multispeaker()
         self.audio_transform = None
-
-        if self.args.use_speaker_embedding:
-            self._init_speaker_embedding()
-
-        if self.args.use_d_vector_file:
-            self._init_d_vector()
 
         # TODO: make this a function
         if self.args.use_speaker_encoder_as_loss:
@@ -364,14 +357,12 @@ class Vits(BaseTTS):
                 )
 
     def _init_speaker_embedding(self):
-        # pylint: disable=attribute-defined-outside-init
         if self.num_speakers > 0:
             logger.info("Initialization of speaker-embedding layers.")
             self.embedded_speaker_dim = self.args.speaker_embedding_channels
             self.emb_g = nn.Embedding(self.num_speakers, self.embedded_speaker_dim)
 
     def _init_d_vector(self):
-        # pylint: disable=attribute-defined-outside-init
         if hasattr(self, "emb_g"):
             raise ValueError("[!] Speaker embedding layer already initialized before d_vector settings.")
         self.embedded_speaker_dim = self.args.d_vector_dim

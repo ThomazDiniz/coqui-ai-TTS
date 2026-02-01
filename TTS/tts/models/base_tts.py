@@ -105,7 +105,7 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
             return self.speaker_manager.num_speakers
         return self.config.get("num_speakers", 1)
 
-    def init_multispeaker(self, config: Coqpit):
+    def init_multispeaker(self) -> None:
         """Set up for multi-speaker TTS.
 
         Initialize a speaker embedding layer if needed and define expected embedding
@@ -119,20 +119,31 @@ class BaseTTS(CloningMixin, BaseTrainerModel):
            `config.d_vector_dim` or 512.
 
         You can override this function for new models.
-
-        Args:
-            config (Coqpit): Model configuration.
         """
-        # set ultimate speaker embedding size
-        if config.use_speaker_embedding or config.use_d_vector_file:
-            self.embedded_speaker_dim = (
-                config.d_vector_dim if "d_vector_dim" in config and config.d_vector_dim is not None else 512
-            )
-        # init speaker embedding layer
-        if config.use_speaker_embedding and not config.use_d_vector_file:
-            logger.info("Init speaker_embedding layer.")
-            self.speaker_embedding = nn.Embedding(self.num_speakers, self.embedded_speaker_dim)
-            self.speaker_embedding.weight.data.normal_(0, 0.3)
+        self.embedded_speaker_dim = 0
+        use_speaker_embedding = get_from_config_or_model_args(self.config, "use_speaker_embedding")
+        use_d_vector_file = get_from_config_or_model_args(self.config, "use_d_vector_file")
+        if self.speaker_manager is None and (use_d_vector_file or use_speaker_embedding):
+            msg = "No SpeakerManager provided. You must provide it before initializing a multi-speaker model."
+            raise ValueError(msg)
+
+        if use_d_vector_file:
+            logger.info("Initialization of d-vectors.")
+            self._init_d_vector()
+
+        if use_speaker_embedding and not use_d_vector_file:
+            logger.info("Initialization of speaker-embedding layers.")
+            self._init_speaker_embedding()
+
+    def _init_speaker_embedding(self) -> None:
+        """Initialize speaker embedding layer."""
+        self.embedded_speaker_dim = self.config.speaker_embedding_dim
+        self.speaker_embedding = nn.Embedding(self.num_speakers, self.embedded_speaker_dim)
+        self.speaker_embedding.weight.data.normal_(0, 0.3)
+
+    def _init_d_vector(self) -> None:
+        """Initialize d-vectors."""
+        self.embedded_speaker_dim = self.config.d_vector_dim if self.config.get("d_vector_dim") else 512
 
     def get_aux_input_from_test_sentences(self, sentence_info: str | list[str]) -> dict[str, Any]:
         # extract speaker and language info

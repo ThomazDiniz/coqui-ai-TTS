@@ -40,7 +40,7 @@ class Tacotron(BaseTacotron):
         # `init_multispeaker` needs to be called once more in training to initialize the speaker embedding layer based
         # on the number of speakers infered from the dataset.
         if self.use_speaker_embedding or self.use_d_vector_file:
-            self.init_multispeaker(self.config)
+            self.init_multispeaker()
             self.decoder_in_features += self.embedded_speaker_dim  # add speaker embedding dim
 
         if self.use_gst:

@@ -55,7 +55,7 @@ class ForwardTTS(BaseTTS):
     ):
         super().__init__(config, ap, tokenizer, speaker_manager)
 
-        self.init_multispeaker(self.config)
+        self.init_multispeaker()
 
         self.max_duration = self.args.max_duration
         self.use_aligner = self.args.use_aligner
@@ -127,29 +127,15 @@ class ForwardTTS(BaseTTS):
                 in_query_channels=self.args.out_channels, in_key_channels=self.args.hidden_channels
             )
 
-    def init_multispeaker(self, config: Coqpit):
-        """Init for multi-speaker training.
+    def _init_speaker_embedding(self) -> None:
+        self.emb_g = nn.Embedding(self.num_speakers, self.args.hidden_channels)
+        nn.init.uniform_(self.emb_g.weight, -0.1, 0.1)
 
-        Args:
-            config: Model configuration.
-        """
-        self.embedded_speaker_dim = 0
-        # init speaker manager
-        if self.speaker_manager is None and (config.use_d_vector_file or config.use_speaker_embedding):
-            raise ValueError(
-                " > SpeakerManager is not provided. You must provide the SpeakerManager before initializing a multi-speaker model."
-            )
-        # init d-vector embedding
-        if config.use_d_vector_file:
-            self.embedded_speaker_dim = config.d_vector_dim
-            if self.args.d_vector_dim != self.args.hidden_channels:
-                # self.proj_g = nn.Conv1d(self.args.d_vector_dim, self.args.hidden_channels, 1)
-                self.proj_g = nn.Linear(in_features=self.args.d_vector_dim, out_features=self.args.hidden_channels)
-        # init speaker embedding layer
-        if config.use_speaker_embedding and not config.use_d_vector_file:
-            logger.info("Init speaker_embedding layer.")
-            self.emb_g = nn.Embedding(self.num_speakers, self.args.hidden_channels)
-            nn.init.uniform_(self.emb_g.weight, -0.1, 0.1)
+    def _init_d_vector(self) -> None:
+        self.embedded_speaker_dim = self.config.d_vector_dim
+        if self.args.d_vector_dim != self.args.hidden_channels:
+            # self.proj_g = nn.Conv1d(self.args.d_vector_dim, self.args.hidden_channels, 1)
+            self.proj_g = nn.Linear(in_features=self.args.d_vector_dim, out_features=self.args.hidden_channels)
 
     def format_durations(self, o_dr_log, x_mask):
         """Format predicted durations.

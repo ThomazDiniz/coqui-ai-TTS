@@ -4,7 +4,6 @@ from collections.abc import Callable
 
 import torch
 import torch.nn.functional as F
-from coqpit import Coqpit
 from monotonic_alignment_search import maximum_path
 from torch import nn
 
@@ -37,7 +36,7 @@ class AcousticModel(torch.nn.Module):
         self.tokenizer = tokenizer
         self.speaker_manager = speaker_manager
 
-        self.init_multispeaker(args)
+        self.init_multispeaker()
         # self.set_embedding_dims()
 
         self.length_scale = (
@@ -162,10 +161,9 @@ class AcousticModel(torch.nn.Module):
         self.energy_scaler = torch.nn.BatchNorm1d(1, affine=False, track_running_stats=True, momentum=None)
         self.energy_scaler.requires_grad_(False)
 
-    def init_multispeaker(self, args: Coqpit):  # pylint: disable=unused-argument
+    def init_multispeaker(self):
         """Init for multi-speaker training."""
         self.embedded_speaker_dim = 0
-        self.audio_transform = None
 
         if self.speaker_manager:
             self.num_speakers = self.speaker_manager.num_speakers

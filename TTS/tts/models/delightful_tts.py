@@ -308,7 +308,7 @@ class DelightfulTTS(BaseTTSE2E):
         speaker_manager: None = None,
     ):
         super().__init__(config, ap, tokenizer, speaker_manager)
-        self.init_multispeaker(config)
+        self.init_multispeaker()
         self.binary_loss_weight = None
 
         self.args.out_channels = self.config.audio.num_mels
@@ -383,30 +383,12 @@ class DelightfulTTS(BaseTTSE2E):
         )  # pylint: disable=attribute-defined-outside-init
         self.update_energy_scaler = True  # pylint: disable=attribute-defined-outside-init
 
-    def init_multispeaker(self, config: Coqpit):
-        """Init for multi-speaker training.
-
-        Args:
-            config (Coqpit): Model configuration.
-        """
-        self.embedded_speaker_dim = 0
-        self.audio_transform = None
-
-        if self.args.use_speaker_embedding:
-            self._init_speaker_embedding()
-
-        if self.args.use_d_vector_file:
-            self._init_d_vector()
-
     def _init_speaker_embedding(self):
-        # pylint: disable=attribute-defined-outside-init
         if self.num_speakers > 0:
-            logger.info("Initialization of speaker-embedding layers.")
             self.embedded_speaker_dim = self.args.speaker_embedding_channels
             self.args.embedded_speaker_dim = self.args.speaker_embedding_channels
 
     def _init_d_vector(self):
-        # pylint: disable=attribute-defined-outside-init
         if hasattr(self, "emb_g"):
             raise ValueError("[!] Speaker embedding layer already initialized before d_vector settings.")
         self.embedded_speaker_dim = self.args.d_vector_dim

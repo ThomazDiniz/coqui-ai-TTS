@@ -66,7 +66,7 @@ class AlignTTS(BaseTTS):
         self.emb = nn.Embedding(self.config.model_args.num_chars, self.config.model_args.hidden_channels)
 
         self.embedded_speaker_dim = 0
-        self.init_multispeaker(config)
+        self.init_multispeaker()
 
         self.pos_encoder = PositionalEncoding(config.model_args.hidden_channels)
         self.encoder = Encoder(
