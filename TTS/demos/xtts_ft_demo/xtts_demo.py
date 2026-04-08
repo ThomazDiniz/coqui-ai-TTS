@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -55,17 +56,49 @@ def load_model(xtts_checkpoint, xtts_config, xtts_vocab):
     if not xtts_checkpoint or not xtts_config or not xtts_vocab:
         UI_LOG.warning("[STEP][LOAD_MODEL] missing path(s); abort")
         return "You need to run the previous steps or manually set the `XTTS checkpoint path`, `XTTS config path`, and `XTTS vocab path` fields !!"
-    config = XttsConfig()
-    config.load_json(xtts_config)
-    XTTS_MODEL = Xtts.init_from_config(config)
-    print("Loading XTTS model! ")
-    XTTS_MODEL.load_checkpoint(config, checkpoint_path=xtts_checkpoint, vocab_path=xtts_vocab, use_deepspeed=False)
-    if torch.cuda.is_available():
-        XTTS_MODEL.cuda()
+    try:
+        for label, p in (("ckpt", xtts_checkpoint), ("cfg", xtts_config), ("vocab", xtts_vocab)):
+            try:
+                exists = os.path.isfile(p)
+                size_mb = (os.path.getsize(p) / 1024**2) if exists else None
+                UI_LOG.info("[STEP][LOAD_MODEL] %s exists=%s size_mb=%s path=%s", label, exists, size_mb, p)
+            except Exception:
+                UI_LOG.exception("[STEP][LOAD_MODEL] stat failed for %s=%s", label, p)
 
-    print("Model Loaded!")
-    UI_LOG.info("[STEP][LOAD_MODEL] done")
-    return "Model Loaded!"
+        t0 = time.perf_counter()
+        UI_LOG.info("[STEP][LOAD_MODEL] load_json begin")
+        config = XttsConfig()
+        config.load_json(xtts_config)
+        UI_LOG.info("[STEP][LOAD_MODEL] load_json done in %.2fs", time.perf_counter() - t0)
+
+        t1 = time.perf_counter()
+        UI_LOG.info("[STEP][LOAD_MODEL] init_from_config begin")
+        XTTS_MODEL = Xtts.init_from_config(config)
+        UI_LOG.info("[STEP][LOAD_MODEL] init_from_config done in %.2fs", time.perf_counter() - t1)
+
+        t2 = time.perf_counter()
+        UI_LOG.info("[STEP][LOAD_MODEL] load_checkpoint begin use_deepspeed=False")
+        print("Loading XTTS model! ")
+        XTTS_MODEL.load_checkpoint(config, checkpoint_path=xtts_checkpoint, vocab_path=xtts_vocab, use_deepspeed=False)
+        UI_LOG.info("[STEP][LOAD_MODEL] load_checkpoint done in %.2fs", time.perf_counter() - t2)
+
+        if torch.cuda.is_available():
+            t3 = time.perf_counter()
+            UI_LOG.info("[STEP][LOAD_MODEL] cuda() begin")
+            XTTS_MODEL.cuda()
+            UI_LOG.info("[STEP][LOAD_MODEL] cuda() done in %.2fs", time.perf_counter() - t3)
+            UI_LOG.info(
+                "[STEP][LOAD_MODEL] cuda allocated_mb=%.1f reserved_mb=%.1f",
+                torch.cuda.memory_allocated() / 1024**2,
+                torch.cuda.memory_reserved() / 1024**2,
+            )
+
+        print("Model Loaded!")
+        UI_LOG.info("[STEP][LOAD_MODEL] done")
+        return "Model Loaded!"
+    except Exception:
+        UI_LOG.exception("[STEP][LOAD_MODEL] failed")
+        raise
 
 
 def run_tts(lang, tts_text, speaker_audio_file):
@@ -74,23 +107,58 @@ def run_tts(lang, tts_text, speaker_audio_file):
         UI_LOG.warning("[STEP][INFERENCE] model not loaded or no reference audio")
         return "You need to run the previous step to load the model !!", None, None
 
-    gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(
-        audio_path=speaker_audio_file,
-        gpt_cond_len=XTTS_MODEL.config.gpt_cond_len,
-        max_ref_length=XTTS_MODEL.config.max_ref_len,
-        sound_norm_refs=XTTS_MODEL.config.sound_norm_refs,
-    )
-    out = XTTS_MODEL.inference(
-        text=tts_text,
-        language=lang,
-        gpt_cond_latent=gpt_cond_latent,
-        speaker_embedding=speaker_embedding,
-        temperature=XTTS_MODEL.config.temperature,  # Add custom parameters here
-        length_penalty=XTTS_MODEL.config.length_penalty,
-        repetition_penalty=XTTS_MODEL.config.repetition_penalty,
-        top_k=XTTS_MODEL.config.top_k,
-        top_p=XTTS_MODEL.config.top_p,
-    )
+    try:
+        if torch.cuda.is_available():
+            UI_LOG.info(
+                "[STEP][INFERENCE] cuda allocated_mb=%.1f reserved_mb=%.1f",
+                torch.cuda.memory_allocated() / 1024**2,
+                torch.cuda.memory_reserved() / 1024**2,
+            )
+
+        t0 = time.perf_counter()
+        UI_LOG.info(
+            "[STEP][INFERENCE] conditioning begin gpt_cond_len=%s max_ref_len=%s sound_norm_refs=%s",
+            getattr(XTTS_MODEL.config, "gpt_cond_len", None),
+            getattr(XTTS_MODEL.config, "max_ref_len", None),
+            getattr(XTTS_MODEL.config, "sound_norm_refs", None),
+        )
+        gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(
+            audio_path=speaker_audio_file,
+            gpt_cond_len=XTTS_MODEL.config.gpt_cond_len,
+            max_ref_length=XTTS_MODEL.config.max_ref_len,
+            sound_norm_refs=XTTS_MODEL.config.sound_norm_refs,
+        )
+        UI_LOG.info("[STEP][INFERENCE] conditioning done in %.2fs", time.perf_counter() - t0)
+        if torch.cuda.is_available():
+            UI_LOG.info(
+                "[STEP][INFERENCE] cuda(after conditioning) allocated_mb=%.1f reserved_mb=%.1f",
+                torch.cuda.memory_allocated() / 1024**2,
+                torch.cuda.memory_reserved() / 1024**2,
+            )
+
+        t1 = time.perf_counter()
+        UI_LOG.info("[STEP][INFERENCE] inference begin")
+        out = XTTS_MODEL.inference(
+            text=tts_text,
+            language=lang,
+            gpt_cond_latent=gpt_cond_latent,
+            speaker_embedding=speaker_embedding,
+            temperature=XTTS_MODEL.config.temperature,  # Add custom parameters here
+            length_penalty=XTTS_MODEL.config.length_penalty,
+            repetition_penalty=XTTS_MODEL.config.repetition_penalty,
+            top_k=XTTS_MODEL.config.top_k,
+            top_p=XTTS_MODEL.config.top_p,
+        )
+        UI_LOG.info("[STEP][INFERENCE] inference done in %.2fs", time.perf_counter() - t1)
+        if torch.cuda.is_available():
+            UI_LOG.info(
+                "[STEP][INFERENCE] cuda(after inference) allocated_mb=%.1f reserved_mb=%.1f",
+                torch.cuda.memory_allocated() / 1024**2,
+                torch.cuda.memory_reserved() / 1024**2,
+            )
+    except Exception:
+        UI_LOG.exception("[STEP][INFERENCE] failed")
+        raise
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fp:
         out["wav"] = torch.tensor(out["wav"]).unsqueeze(0)
@@ -457,16 +525,20 @@ if __name__ == "__main__":
                         None,
                     )
 
-                # copy original files to avoid parameters changes issues
-                for _label, src in (("config", config_path), ("vocab", vocab_file)):
-                    r = subprocess.run(["cp", "-f", src, exp_path], capture_output=True, text=True, check=False)
-                    UI_LOG.info(
-                        "[STEP][TRAIN] cp %s -> %s rc=%s stderr=%s",
-                        src,
-                        exp_path,
-                        r.returncode,
-                        (r.stderr or "").strip()[:500],
-                    )
+                # Copy original files to the run folder (Windows-safe; avoids relying on `cp`).
+                copied_config_path = config_path
+                copied_vocab_path = vocab_file
+                for label, src in (("config", config_path), ("vocab", vocab_file)):
+                    try:
+                        dst = os.path.join(exp_path, os.path.basename(src))
+                        shutil.copy2(src, dst)
+                        UI_LOG.info("[STEP][TRAIN] copied %s %s -> %s", label, src, dst)
+                        if label == "config":
+                            copied_config_path = dst
+                        elif label == "vocab":
+                            copied_vocab_path = dst
+                    except Exception:
+                        UI_LOG.exception("[STEP][TRAIN] failed to copy %s %s into %s", label, src, exp_path)
 
                 ft_xtts_checkpoint = os.path.join(exp_path, "best_model.pth")
                 print("Model training done!")
@@ -475,7 +547,7 @@ if __name__ == "__main__":
                 if torch.cuda.is_available():
                     UI_LOG.info("[STEP][TRAIN] cuda_mem_allocated_mb=%.1f (after)", torch.cuda.memory_allocated() / 1024**2)
                 UI_LOG.info("[STEP][TRAIN] done checkpoint=%s plot=%s", ft_xtts_checkpoint, plot_path)
-                return "Model training done!", config_path, vocab_file, ft_xtts_checkpoint, speaker_wav, plot_path
+                return "Model training done!", copied_config_path, copied_vocab_path, ft_xtts_checkpoint, speaker_wav, plot_path
 
         with gr.Tab("3 - Inference") as tab_inf:
             with gr.Row():
@@ -499,7 +571,7 @@ if __name__ == "__main__":
                 with gr.Column() as col2:
                     speaker_reference_audio = gr.Textbox(
                         label="Speaker reference audio:",
-                        value="",
+                        value=r"E:\git\coqui-ai-TTS\PB_0001.wav",
                     )
                     tts_language = gr.Dropdown(
                         label="Language",
@@ -508,7 +580,7 @@ if __name__ == "__main__":
                     )
                     tts_text = gr.Textbox(
                         label="Input Text.",
-                        value="This model sounds really good and above all, it's reasonably fast.",
+                        value="O céu de Campina Grande ficou alaranjado no fim da tarde.",
                     )
                     tts_btn = gr.Button(value="Step 4 - Inference")
 

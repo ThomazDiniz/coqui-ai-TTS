@@ -3,15 +3,10 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 rem Usage:
-rem   run-docker.bat              ^> build + tts-server XTTS v2 (port 5002)
-rem   run-docker.bat server       ^> same
-rem   run-docker.bat finetune     ^> build + Gradio fine-tune (port 5003), primeiro plano
-rem   run-docker.bat nobuild      ^> skip build, server only
+rem   run-docker.bat finetune          ^> build + Gradio XTTS fine-tune (port 5003)
 rem   run-docker.bat finetune nobuild
-rem
-rem Fine-tune em background + logs:
-rem   docker-finetune-detached.bat
-rem   docker-finetune-logs.bat
+rem   run-docker.bat / run-docker.bat server   ^> tts-server XTTS v2 (port 5002)
+rem   run-docker.bat nobuild
 
 set "MODE=server"
 set "SKIP_BUILD=0"
@@ -29,7 +24,7 @@ if "!SKIP_BUILD!"=="0" (
     echo.
     echo [coqui-tts] Build falhou — veja as mensagens acima.
     set "EC=1"
-    goto :end_pause
+    goto :end_run
   )
 ) else (
   echo.
@@ -43,7 +38,7 @@ if "!MODE!"=="finetune" (
   echo.
   docker compose --profile finetune up xtts-finetune
   set "EC=!ERRORLEVEL!"
-  goto :end_pause
+  goto :end_run
 )
 
 echo.
@@ -52,9 +47,9 @@ echo Para fine-tuning: run-docker.bat finetune   ^|   docker-finetune.bat
 echo.
 docker compose up xtts-server
 set "EC=!ERRORLEVEL!"
-goto :end_pause
+goto :end_run
 
-:end_pause
+:end_run
 if not defined EC set "EC=0"
 echo.
 if not "!EC!"=="0" (
@@ -62,7 +57,5 @@ if not "!EC!"=="0" (
 ) else (
   echo [coqui-tts] Codigo de saida: 0 ^(ok^).
 )
-echo.
-echo Pressione qualquer tecla para fechar esta janela...
-pause
+echo [coqui-tts] Feche esta janela manualmente. Servicos em primeiro plano: Ctrl+C para parar.
 exit /b !EC!

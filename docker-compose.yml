@@ -1,16 +1,10 @@
-# Coqui TTS — GPU (NVIDIA Container Toolkit / Docker Desktop com GPU no WSL2).
-# Modelos Hugging Face e checkpoints ficam em volumes nomeados.
+# Coqui TTS — GPU (Docker Desktop + WSL2 / NVIDIA Container Toolkit).
 #
-# Servidor XTTS v2 (inferência na web):
-#   docker compose up -d
-#
-# Gradio de fine-tuning XTTS (porta 5003):
+# Fine-tuning XTTS (Gradio, porta 5003):
 #   docker compose --profile finetune up xtts-finetune
-#   docker compose --profile finetune up -d xtts-finetune   # em background
-#   docker compose --profile finetune logs -f xtts-finetune # logs ao vivo
+#   Windows: docker-finetune.bat   ou   run-docker.bat finetune
 #
-# Windows: docker-finetune.bat | docker-finetune-detached.bat | docker-finetune-logs.bat
-# Ver também: run-docker.bat
+# Servidor tts-server (porta 5002): docker compose up xtts-server
 
 services:
   xtts-server:
@@ -54,8 +48,6 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       # Evita telemetria Gradio (pedidos HTTP extras nos logs)
       - GRADIO_ANALYTICS_ENABLED=False
-      # Cópia persistente da consola (stdout) em volume → docker-finetune-logs.bat pode seguir o ficheiro no host
-      - XTTS_FT_LOG_FILE=/data/xtts_ft/ui_console.log
     volumes:
       - coqui-tts-models:/root/.local/share/tts
       - huggingface-cache:/root/.cache/huggingface

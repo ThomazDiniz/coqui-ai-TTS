@@ -2,6 +2,7 @@ import contextlib
 import logging
 import os
 import pickle
+import time
 from pathlib import Path
 from typing import Any
 
@@ -84,14 +85,31 @@ def load_audio(audiopath, sampling_rate):
     # better load setting following: https://github.com/faroit/python_audio_loading_benchmark
 
     # torchaudio should chose proper backend to load audio depending on platform
+    t0 = time.perf_counter()
     audio, lsr = torchaudio.load(audiopath)
+    t_load = time.perf_counter() - t0
 
     # stereo to mono if needed
     if audio.size(0) != 1:
         audio = torch.mean(audio, dim=0, keepdim=True)
 
     if lsr != sampling_rate:
+        t1 = time.perf_counter()
         audio = torchaudio.functional.resample(audio, lsr, sampling_rate)
+        t_res = time.perf_counter() - t1
+    else:
+        t_res = 0.0
+
+    if t_load > 1.0 or t_res > 1.0:
+        logger.info(
+            "[XTTS][load_audio] path=%s load_s=%.2f resample_s=%.2f sr=%s->%s shape=%s",
+            audiopath,
+            t_load,
+            t_res,
+            lsr,
+            sampling_rate,
+            tuple(audio.shape),
+        )
 
     # Check some assumptions about audio range. This should be automatically fixed in load_wav_to_torch, but might not be in some edge cases, where we should squawk.
     # '10' is arbitrarily chosen since it seems like audio will often "overdrive" the [-1,1] bounds.
@@ -295,6 +313,16 @@ class Xtts(BaseTTS):
             sound_norm_refs (bool, optional): Whether to normalize the audio. Defaults to False.
             load_sr (int, optional): Sample rate to load the audio. Defaults to 22050.
         """
+        t0 = time.perf_counter()
+        logger.info(
+            "[XTTS][conditioning] begin audio_path=%s max_ref_length=%s gpt_cond_len=%s chunk_len=%s load_sr=%s device=%s",
+            audio_path,
+            max_ref_length,
+            gpt_cond_len,
+            gpt_cond_chunk_len,
+            load_sr,
+            getattr(self, "device", None),
+        )
         # deal with multiples references
         if not isinstance(audio_path, list):
             audio_paths = [audio_path]
@@ -305,29 +333,46 @@ class Xtts(BaseTTS):
         audios = []
         speaker_embedding = None
         for file_path in audio_paths:
+            t_a = time.perf_counter()
             audio = load_audio(file_path, load_sr)
             audio = audio[:, : load_sr * max_ref_length].to(self.device)
+            logger.info(
+                "[XTTS][conditioning] loaded ref=%s in %.2fs shape=%s",
+                file_path,
+                time.perf_counter() - t_a,
+                tuple(audio.shape),
+            )
             if sound_norm_refs:
                 audio = (audio / torch.abs(audio).max()) * 0.75
             if librosa_trim_db is not None:
                 audio = librosa.effects.trim(audio, top_db=librosa_trim_db)[0]
 
             # compute latents for the decoder
+            t_se = time.perf_counter()
             speaker_embedding = self.get_speaker_embedding(audio, load_sr)
+            logger.info(
+                "[XTTS][conditioning] speaker_embedding done in %.2fs",
+                time.perf_counter() - t_se,
+            )
             speaker_embeddings.append(speaker_embedding)
 
             audios.append(audio)
 
         # merge all the audios and compute the latents for the gpt
+        t_cat = time.perf_counter()
         full_audio = torch.cat(audios, dim=-1)
+        logger.info("[XTTS][conditioning] concat done in %.2fs full_shape=%s", time.perf_counter() - t_cat, tuple(full_audio.shape))
+        t_gpt = time.perf_counter()
         gpt_cond_latents = self.get_gpt_cond_latents(
             full_audio, load_sr, length=gpt_cond_len, chunk_length=gpt_cond_chunk_len
         )  # [1, 1024, T]
+        logger.info("[XTTS][conditioning] gpt_cond_latents done in %.2fs shape=%s", time.perf_counter() - t_gpt, tuple(gpt_cond_latents.shape))
 
         if speaker_embeddings:
             speaker_embedding = torch.stack(speaker_embeddings)
             speaker_embedding = speaker_embedding.mean(dim=0)
 
+        logger.info("[XTTS][conditioning] done total=%.2fs", time.perf_counter() - t0)
         return gpt_cond_latents, speaker_embedding
 
     def synthesize(
@@ -715,13 +760,27 @@ class Xtts(BaseTTS):
         if speaker_file_path is None:
             speaker_file_path = checkpoint_dir / "speakers_xtts.pth"
 
+        t0 = time.perf_counter()
+        logger.info("[XTTS][load_checkpoint] begin model_path=%s checkpoint_dir=%s", model_path, checkpoint_dir)
+        logger.info(
+            "[XTTS][load_checkpoint] vocab_path=%s speaker_file_path=%s eval=%s strict=%s use_deepspeed=%s",
+            vocab_path,
+            speaker_file_path,
+            eval,
+            strict,
+            use_deepspeed,
+        )
+
         self.language_manager = LanguageManager(config)
         self.speaker_manager = None
         if speaker_file_path is not None and os.path.exists(speaker_file_path):
             self.speaker_manager = SpeakerManager(speaker_file_path)
+            logger.info("[XTTS][load_checkpoint] speaker_manager loaded from %s", speaker_file_path)
 
         if Path(vocab_path).is_file():
+            t_tok = time.perf_counter()
             self.tokenizer = VoiceBpeTokenizer(vocab_file=vocab_path)
+            logger.info("[XTTS][load_checkpoint] tokenizer loaded in %.2fs", time.perf_counter() - t_tok)
         else:
             msg = (
                 f"`vocab.json` file not found in `{checkpoint_dir}`. Move the file there or "
@@ -729,22 +788,45 @@ class Xtts(BaseTTS):
             )
             raise FileNotFoundError(msg)
 
+        t_init = time.perf_counter()
         self.init_models()
+        logger.info("[XTTS][load_checkpoint] init_models done in %.2fs", time.perf_counter() - t_init)
 
+        t_ckpt = time.perf_counter()
+        logger.info("[XTTS][load_checkpoint] get_compatible_checkpoint_state_dict begin")
         checkpoint = self.get_compatible_checkpoint_state_dict(model_path)
+        try:
+            n_keys = len(checkpoint.keys())
+        except Exception:
+            n_keys = "?"
+        logger.info(
+            "[XTTS][load_checkpoint] get_compatible_checkpoint_state_dict done in %.2fs keys=%s",
+            time.perf_counter() - t_ckpt,
+            n_keys,
+        )
 
         # deal with v1 and v1.1. V1 has the init_gpt_for_inference keys, v1.1 do not
         try:
+            t_sd = time.perf_counter()
+            logger.info("[XTTS][load_checkpoint] load_state_dict begin strict=%s", strict)
             self.load_state_dict(checkpoint, strict=strict)
+            logger.info("[XTTS][load_checkpoint] load_state_dict done in %.2fs", time.perf_counter() - t_sd)
         except:
             if eval:
                 self.gpt.init_gpt_for_inference(kv_cache=self.args.kv_cache)
+            t_sd2 = time.perf_counter()
+            logger.info("[XTTS][load_checkpoint] load_state_dict retry begin strict=%s", strict)
             self.load_state_dict(checkpoint, strict=strict)
+            logger.info("[XTTS][load_checkpoint] load_state_dict retry done in %.2fs", time.perf_counter() - t_sd2)
 
         if eval:
             self.hifigan_decoder.eval()
+            t_gpt = time.perf_counter()
             self.gpt.init_gpt_for_inference(kv_cache=self.args.kv_cache, use_deepspeed=use_deepspeed)
             self.gpt.eval()
+            logger.info("[XTTS][load_checkpoint] gpt init+eval done in %.2fs", time.perf_counter() - t_gpt)
+
+        logger.info("[XTTS][load_checkpoint] done total=%.2fs", time.perf_counter() - t0)
 
     def train_step(self):
         raise NotImplementedError(

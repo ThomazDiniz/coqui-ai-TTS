@@ -2,13 +2,9 @@
 setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
-rem Fine-tuning em primeiro plano (fecha o terminal = pode parar o container).
-rem   docker-finetune.bat           ^|  docker-finetune.bat nobuild
-rem
-rem Em segundo plano (recomendado para treinos longos):
-rem   docker-finetune-detached.bat  ^|  docker-finetune-detached.bat nobuild
-rem Ver logs depois:
-rem   docker-finetune-logs.bat
+rem XTTS fine-tuning (Gradio): http://localhost:5003
+rem   docker-finetune.bat
+rem   docker-finetune.bat nobuild
 
 call "%~dp0run-docker.bat" finetune %*
 exit /b !ERRORLEVEL!

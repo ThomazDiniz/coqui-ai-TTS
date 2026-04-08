@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass, field
 
 import torch
@@ -197,6 +198,8 @@ class GPTTrainer(BaseTTS):
         self.torch_mel_spectrogram_dvae = TorchMelSpectrogram(
             mel_norm_file=self.args.mel_norm_file, sampling_rate=config.audio.dvae_sample_rate
         )
+        # Reset em on_train_epoch_start; usado para logs dos primeiros batches por época
+        self._xtts_ft_diag_batch_idx = 0
 
     def forward(self, text_inputs, text_lengths, audio_codes, wav_lengths, cond_mels, cond_idxs, cond_lens):
         """
@@ -259,6 +262,13 @@ class GPTTrainer(BaseTTS):
     @torch.no_grad()  # torch no grad to avoid gradients from the pre-processing and DVAE codes extraction
     def format_batch_on_device(self, batch):
         """Compute spectrograms on the device."""
+        self._xtts_ft_diag_batch_idx += 1
+        idx = self._xtts_ft_diag_batch_idx
+        _log = idx <= 8
+        _t0 = time.perf_counter() if _log else 0.0
+        if _log:
+            logger.info("[XTTS_FT][batch %s] format_batch_on_device: mel + DVAE (start)", idx)
+
         batch["text_lengths"] = batch["text_lengths"]
         batch["wav_lengths"] = batch["wav_lengths"]
         batch["text_inputs"] = batch["padded_text"]
@@ -295,6 +305,8 @@ class GPTTrainer(BaseTTS):
         del batch["padded_text"]
         del batch["wav"]
         del batch["conditioning"]
+        if _log:
+            logger.info("[XTTS_FT][batch %s] format_batch_on_device: done in %.2fs", idx, time.perf_counter() - _t0)
         return batch
 
     def train_step(self, batch, criterion):
@@ -307,12 +319,27 @@ class GPTTrainer(BaseTTS):
         cond_idxs = batch["cond_idxs"]
         cond_lens = batch["cond_lens"]
 
+        idx = self._xtts_ft_diag_batch_idx
+        _log = idx <= 8
+        _t0 = time.perf_counter() if _log else 0.0
+        if _log:
+            logger.info("[XTTS_FT][batch %s] train_step: GPT forward + loss (start)", idx)
+
         loss_text, loss_mel, _ = self.forward(
             text_inputs, text_lengths, audio_codes, wav_lengths, cond_mels, cond_idxs, cond_lens
         )
         loss_dict["loss_text_ce"] = loss_text * self.args.gpt_loss_text_ce_weight
         loss_dict["loss_mel_ce"] = loss_mel * self.args.gpt_loss_mel_ce_weight
         loss_dict["loss"] = loss_dict["loss_text_ce"] + loss_dict["loss_mel_ce"]
+        if _log:
+            logger.info(
+                "[XTTS_FT][batch %s] train_step: done in %.2fs loss=%.4f (text_ce=%.4f mel_ce=%.4f)",
+                idx,
+                time.perf_counter() - _t0,
+                float(loss_dict["loss"].item()),
+                float(loss_dict["loss_text_ce"].item()),
+                float(loss_dict["loss_mel_ce"].item()),
+            )
         return {"model_outputs": None}, loss_dict
 
     def eval_step(self, batch, criterion):
@@ -321,6 +348,13 @@ class GPTTrainer(BaseTTS):
         return super().eval_step(batch, criterion)
 
     def on_train_epoch_start(self, trainer):
+        self._xtts_ft_diag_batch_idx = 0
+        logger.info(
+            "[XTTS_FT][epoch] on_train_epoch_start epochs_done=%r epoch=%r global_step=%r",
+            getattr(trainer, "epochs_done", None),
+            getattr(trainer, "epoch", None),
+            getattr(trainer, "global_step", None),
+        )
         trainer.model.eval()  # the whole model to eval
         # put gpt model in training mode
         if hasattr(trainer.model, "module") and hasattr(trainer.model.module, "xtts"):
@@ -395,6 +429,17 @@ class GPTTrainer(BaseTTS):
                 num_workers=config.num_eval_loader_workers if is_eval else config.num_loader_workers,
                 pin_memory=False,
             )
+        if isinstance(dataset.samples, dict):
+            n_items = sum(len(v) for v in dataset.samples.values())
+        else:
+            n_items = len(dataset.samples)
+        logger.info(
+            "[XTTS_FT][loader] %s dataset_items=%s batch_size=%s num_workers=%s",
+            "eval" if is_eval else "train",
+            n_items,
+            config.eval_batch_size if is_eval else config.batch_size,
+            config.num_eval_loader_workers if is_eval else config.num_loader_workers,
+        )
         return loader
 
     def get_optimizer(self) -> list:

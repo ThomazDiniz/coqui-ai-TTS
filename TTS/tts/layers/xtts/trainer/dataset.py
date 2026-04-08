@@ -74,6 +74,9 @@ class XTTSDataset(torch.utils.data.Dataset):
             # order by language
             self.samples = key_samples_by_col(self.samples, "language")
             logger.info("Sampling by language: %s", self.samples.keys())
+            _by_lang = {k: len(v) for k, v in self.samples.items()}
+            _n = sum(_by_lang.values())
+            logger.info("[XTTS_FT][dataset] train total_samples=%s counts_by_language=%s", _n, _by_lang)
         else:
             # for evaluation load and check samples that are corrupted to ensures the reproducibility
             self.check_eval_samples()

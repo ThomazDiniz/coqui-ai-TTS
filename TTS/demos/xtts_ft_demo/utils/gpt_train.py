@@ -159,8 +159,8 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
         num_loader_workers=loader_workers,
         num_eval_loader_workers=loader_workers,
         eval_split_max_size=256,
-        print_step=50,
-        plot_step=100,
+        print_step=25,
+        plot_step=50,
         log_model_step=100,
         save_step=1000,
         save_n_checkpoints=1,
@@ -233,7 +233,12 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     except (StopIteration, AttributeError):
         _LOG.info("[TRAIN] could not read model device (cuda_available=%s)", torch.cuda.is_available())
 
-    _LOG.info("[TRAIN] trainer.fit() starting (epochs=%s) ...", num_epochs)
+    _LOG.info(
+        "[TRAIN] trainer.fit() starting (epochs=%s). Logs [XTTS_FT]: epoch/loader, primeiros 8 batches (tempos); "
+        "Trainer imprime a cada print_step=%s",
+        num_epochs,
+        config.print_step,
+    )
     t_fit = time.perf_counter()
     trainer.fit()
     _LOG.info("[TRAIN] trainer.fit() finished in %.1fs", time.perf_counter() - t_fit)
