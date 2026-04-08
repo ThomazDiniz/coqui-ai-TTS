@@ -1,0 +1,87 @@
+# Coqui TTS — GPU (NVIDIA Container Toolkit / Docker Desktop com GPU no WSL2).
+# Modelos Hugging Face e checkpoints ficam em volumes nomeados.
+#
+# Servidor XTTS v2 (inferência na web):
+#   docker compose up -d
+#
+# Gradio de fine-tuning XTTS (porta 5003):
+#   docker compose --profile finetune up xtts-finetune
+#   docker compose --profile finetune up -d xtts-finetune   # em background
+#   docker compose --profile finetune logs -f xtts-finetune # logs ao vivo
+#
+# Windows: docker-finetune.bat | docker-finetune-detached.bat | docker-finetune-logs.bat
+# Ver também: run-docker.bat
+
+services:
+  xtts-server:
+    build: .
+    image: coqui-tts:local
+    container_name: coqui-xtts-server
+    ports:
+      - "5002:5002"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - coqui-tts-models:/root/.local/share/tts
+      - huggingface-cache:/root/.cache/huggingface
+      # Dataset local (somente leitura) — opcional
+      - ./data/brPB22_g1bF01_char:/dataset/brPB22:ro
+    shm_size: 2gb
+    entrypoint: []
+    command:
+      - tts-server
+      - --model_name
+      - tts_models/multilingual/multi-dataset/xtts_v2
+      - --use_cuda
+      - --port
+      - "5002"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  xtts-finetune:
+    profiles: [finetune]
+    build: .
+    image: coqui-tts:local
+    container_name: coqui-xtts-finetune
+    ports:
+      - "5003:5003"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Evita telemetria Gradio (pedidos HTTP extras nos logs)
+      - GRADIO_ANALYTICS_ENABLED=False
+      # Cópia persistente da consola (stdout) em volume → docker-finetune-logs.bat pode seguir o ficheiro no host
+      - XTTS_FT_LOG_FILE=/data/xtts_ft/ui_console.log
+    volumes:
+      - coqui-tts-models:/root/.local/share/tts
+      - huggingface-cache:/root/.cache/huggingface
+      - ./data/xtts-work:/data/xtts_ft
+      # Áudios + metadata_train/eval gerados por scripts/export_brPB22_xtts_metadata.py
+      - ./data/brPB22_g1bF01_char:/dataset/brPB22:ro
+      # Código TTS do host (editable install em /app) — evita rebuild após alterar demos/utils
+      - ./TTS:/app/TTS
+    shm_size: 2gb
+    entrypoint: []
+    command:
+      - python
+      - -m
+      - TTS.demos.xtts_ft_demo.xtts_demo
+      - --port
+      - "5003"
+      - --out_path
+      - /data/xtts_ft
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  coqui-tts-models:
+  huggingface-cache:

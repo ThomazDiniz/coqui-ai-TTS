@@ -1,6 +1,9 @@
 import gc
+import logging
 import os
+import time
 
+import torch
 from trainer import Trainer, TrainerArgs
 
 from TTS.config.shared_configs import BaseDatasetConfig
@@ -8,6 +11,25 @@ from TTS.tts.configs.xtts_config import XttsAudioConfig
 from TTS.tts.datasets import load_tts_samples
 from TTS.tts.layers.xtts.trainer.gpt_trainer import GPTArgs, GPTTrainer, GPTTrainerConfig
 from TTS.utils.manage import ModelManager
+
+from TTS.demos.xtts_ft_demo.utils.plot_loss import save_training_loss_plot
+
+_LOG = logging.getLogger("xtts_ft.train")
+
+
+def _num_loader_workers() -> int:
+    """DataLoader worker count for fine-tuning.
+
+    Multiprocessing workers often exit unexpectedly in Docker/Gradio (fork + CUDA, memory, wrapped stdout).
+    Default 0 loads batches in the main process (stable, somewhat slower). Set env XTTS_NUM_LOADER_WORKERS
+    to a positive integer to re-enable workers (e.g. 4 on native Linux with enough RAM).
+    """
+    raw = os.environ.get("XTTS_NUM_LOADER_WORKERS", "0").strip()
+    try:
+        n = int(raw)
+    except ValueError:
+        return 0
+    return max(0, min(n, 32))
 
 
 def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, output_path, max_audio_length=255995):
@@ -19,6 +41,20 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
 
     # Set here the path that the checkpoints will be saved. Default: ./run/training/
     OUT_PATH = os.path.join(output_path, "run", "training")
+    _LOG.info(
+        "[TRAIN] train_gpt begin lang=%s epochs=%s batch=%s grad_acumm=%s max_wav_frames=%s",
+        language,
+        num_epochs,
+        batch_size,
+        grad_acumm,
+        max_audio_length,
+    )
+    _LOG.info("[TRAIN] output_path=%s OUT_PATH=%s", output_path, OUT_PATH)
+    _LOG.info("[TRAIN] train_csv=%s eval_csv=%s", train_csv, eval_csv)
+    _LOG.info("[TRAIN] train_csv exists=%s eval_csv exists=%s", os.path.isfile(train_csv), os.path.isfile(eval_csv))
+
+    loader_workers = _num_loader_workers()
+    _LOG.info("[TRAIN] num_loader_workers=%s (env XTTS_NUM_LOADER_WORKERS)", loader_workers)
 
     # Training Parameters
     OPTIMIZER_WD_ONLY_ON_WEIGHTS = True  # for multi-gpu training please make it False
@@ -54,9 +90,14 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     # download DVAE files if needed
     if not os.path.isfile(DVAE_CHECKPOINT) or not os.path.isfile(MEL_NORM_FILE):
         print(" > Downloading DVAE files!")
+        _LOG.info("[TRAIN] downloading DVAE/mel_stats into %s", CHECKPOINTS_OUT_PATH)
+        t_dl = time.perf_counter()
         ModelManager._download_model_files(
             [MEL_NORM_LINK, DVAE_CHECKPOINT_LINK], CHECKPOINTS_OUT_PATH, progress_bar=True
         )
+        _LOG.info("[TRAIN] DVAE download done in %.1fs", time.perf_counter() - t_dl)
+    else:
+        _LOG.info("[TRAIN] DVAE files already present under %s", CHECKPOINTS_OUT_PATH)
 
     # Download XTTS v2.0 checkpoint if needed
     TOKENIZER_FILE_LINK = "https://huggingface.co/coqui/XTTS-v2/resolve/main/vocab.json"
@@ -71,9 +112,14 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     # download XTTS v2.0 files if needed
     if not os.path.isfile(TOKENIZER_FILE) or not os.path.isfile(XTTS_CHECKPOINT):
         print(" > Downloading XTTS v2.0 files!")
+        _LOG.info("[TRAIN] downloading XTTS tokenizer+model+config into %s", CHECKPOINTS_OUT_PATH)
+        t_dl = time.perf_counter()
         ModelManager._download_model_files(
             [TOKENIZER_FILE_LINK, XTTS_CHECKPOINT_LINK, XTTS_CONFIG_LINK], CHECKPOINTS_OUT_PATH, progress_bar=True
         )
+        _LOG.info("[TRAIN] XTTS base files download done in %.1fs", time.perf_counter() - t_dl)
+    else:
+        _LOG.info("[TRAIN] XTTS tokenizer/model already present under %s", CHECKPOINTS_OUT_PATH)
 
     # init args and config
     model_args = GPTArgs(
@@ -110,7 +156,8 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
         batch_size=BATCH_SIZE,
         batch_group_size=48,
         eval_batch_size=BATCH_SIZE,
-        num_loader_workers=8,
+        num_loader_workers=loader_workers,
+        num_eval_loader_workers=loader_workers,
         eval_split_max_size=256,
         print_step=50,
         plot_step=100,
@@ -132,17 +179,29 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     )
 
     # init the model from config
+    _LOG.info("[TRAIN] GPTTrainer.init_from_config ...")
+    t_m = time.perf_counter()
     model = GPTTrainer.init_from_config(config)
+    _LOG.info("[TRAIN] model init done in %.1fs", time.perf_counter() - t_m)
 
     # load training samples
+    _LOG.info("[TRAIN] load_tts_samples ...")
+    t_s = time.perf_counter()
     train_samples, eval_samples = load_tts_samples(
         DATASETS_CONFIG_LIST,
         eval_split=True,
         eval_split_max_size=config.eval_split_max_size,
         eval_split_size=config.eval_split_size,
     )
+    _LOG.info(
+        "[TRAIN] samples loaded in %.1fs train=%s eval=%s",
+        time.perf_counter() - t_s,
+        len(train_samples),
+        len(eval_samples),
+    )
 
     # init the trainer and 🚀
+    _LOG.info("[TRAIN] building Trainer ...")
     trainer = Trainer(
         TrainerArgs(
             restore_path=None,  # xtts checkpoint is restored via xtts_checkpoint key so no need of restore it using Trainer restore_path parameter
@@ -156,7 +215,28 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
         train_samples=train_samples,
         eval_samples=eval_samples,
     )
+    # Forward/backward run on GPU when CUDA is available; RAM still holds dataset metadata, batch staging, Gradio, etc.
+    _mod = getattr(trainer, "model", model)
+    try:
+        _p = next(_mod.parameters())
+        _LOG.info(
+            "[TRAIN] compute device (first param)=%s cuda_available=%s",
+            _p.device,
+            torch.cuda.is_available(),
+        )
+        if torch.cuda.is_available():
+            _LOG.info(
+                "[TRAIN] cuda allocated_mb=%.1f reserved_mb=%.1f (VRAM; system RAM usage is separate and expected)",
+                torch.cuda.memory_allocated() / 1024**2,
+                torch.cuda.memory_reserved() / 1024**2,
+            )
+    except (StopIteration, AttributeError):
+        _LOG.info("[TRAIN] could not read model device (cuda_available=%s)", torch.cuda.is_available())
+
+    _LOG.info("[TRAIN] trainer.fit() starting (epochs=%s) ...", num_epochs)
+    t_fit = time.perf_counter()
     trainer.fit()
+    _LOG.info("[TRAIN] trainer.fit() finished in %.1fs", time.perf_counter() - t_fit)
 
     # get the longest text audio file to use as speaker reference
     samples_len = [len(item["text"].split(" ")) for item in train_samples]
@@ -164,9 +244,20 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     speaker_ref = train_samples[longest_text_idx]["audio_file"]
 
     trainer_out_path = trainer.output_path
+    _LOG.info("[TRAIN] trainer.output_path=%s speaker_ref=%s", trainer_out_path, speaker_ref)
+
+    loss_plot_path = os.path.join(trainer_out_path, "training_loss.png")
+    if save_training_loss_plot(trainer_out_path, loss_plot_path):
+        print(f" > Saved training loss plot: {loss_plot_path}")
+        _LOG.info("[TRAIN] loss plot path=%s", loss_plot_path)
+    else:
+        loss_plot_path = ""
+        print(" > Could not generate training_loss.png from TensorBoard logs (check tensorboard / logs).")
+        _LOG.warning("[TRAIN] loss plot not generated")
 
     # deallocate VRAM and RAM
     del model, trainer, train_samples, eval_samples
     gc.collect()
+    _LOG.info("[TRAIN] train_gpt returning config=%s vocab=%s ckpt=%s", XTTS_CONFIG_FILE, TOKENIZER_FILE, XTTS_CHECKPOINT)
 
-    return XTTS_CONFIG_FILE, XTTS_CHECKPOINT, TOKENIZER_FILE, trainer_out_path, speaker_ref
+    return XTTS_CONFIG_FILE, XTTS_CHECKPOINT, TOKENIZER_FILE, trainer_out_path, speaker_ref, loss_plot_path

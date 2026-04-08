@@ -139,6 +139,12 @@ languages = [
     "gruut[de,es,fr]>=2.4.0",
     "uroman>=1.3.1.1",
 ]
+# Gradio UI for XTTS fine-tuning (TTS/demos/xtts_ft_demo)
+xtts_ft = [
+    "gradio>=4.0",
+    "faster-whisper>=1.0.0",
+    "tensorboard>=2.14",
+]
 # Installs all extras (except torch, dev and docs)
 all = [
     "coqui-tts[notebooks,server,languages]",

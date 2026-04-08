@@ -1,9 +1,12 @@
 import gc
+import logging
 import os
+import time
 
+import librosa
 import pandas
+import soundfile as sf
 import torch
-import torchaudio
 from faster_whisper import WhisperModel
 from tqdm import tqdm
 
@@ -12,7 +15,19 @@ from TTS.tts.layers.xtts.tokenizer import multilingual_cleaners
 
 torch.set_num_threads(16)
 
+_LOG = logging.getLogger("xtts_ft.formatter")
+
 audio_types = (".wav", ".mp3", ".flac")
+
+
+def _load_audio(path: str):
+    """Load [channels, samples] float32; avoids torchaudio/torchcodec (needs full CUDA NPP in Docker base images)."""
+    y, sr = librosa.load(path, sr=None, mono=False)
+    if y.ndim == 1:
+        wav = torch.from_numpy(y.astype("float32", copy=False)).unsqueeze(0)
+    else:
+        wav = torch.from_numpy(y.astype("float32", copy=False))
+    return wav, int(sr)
 
 
 def list_audios(basePath, contains=None):
@@ -49,15 +64,30 @@ def format_audio_list(
     speaker_name="coqui",
     gradio_progress=None,
 ):
+    if isinstance(audio_files, str):
+        audio_files = [audio_files]
+    n_in = len(audio_files) if audio_files is not None else 0
+    _LOG.info(
+        "[DATASET] format_audio_list begin files=%s lang=%s out=%s eval%%=%s buffer=%s speaker=%s",
+        n_in,
+        target_language,
+        out_path,
+        eval_percentage * 100.0,
+        buffer,
+        speaker_name,
+    )
     audio_total_size = 0
     # make sure that ooutput file exists
     os.makedirs(out_path, exist_ok=True)
 
     # Loading Whisper
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    _LOG.info("[DATASET] whisper device=%s cuda_available=%s", device, torch.cuda.is_available())
 
     print("Loading Whisper Model!")
+    t0 = time.perf_counter()
     asr_model = WhisperModel("large-v2", device=device, compute_type="float16")
+    _LOG.info("[DATASET] WhisperModel loaded in %.1fs", time.perf_counter() - t0)
 
     metadata = {"audio_file": [], "text": [], "speaker_name": []}
 
@@ -66,16 +96,22 @@ def format_audio_list(
     else:
         tqdm_object = tqdm(audio_files)
 
-    for audio_path in tqdm_object:
-        wav, sr = torchaudio.load(audio_path)
+    for fi, audio_path in enumerate(tqdm_object):
+        if fi % 25 == 0:
+            _LOG.info("[DATASET] processing file %s/%s: %s", fi + 1, n_in, audio_path)
+        wav, sr = _load_audio(audio_path)
         # stereo to mono if needed
         if wav.size(0) != 1:
             wav = torch.mean(wav, dim=0, keepdim=True)
 
         wav = wav.squeeze()
-        audio_total_size += wav.size(-1) / sr
+        dur_s = wav.size(-1) / sr
+        audio_total_size += dur_s
 
+        t_tr = time.perf_counter()
         segments, _ = asr_model.transcribe(audio_path, word_timestamps=True, language=target_language)
+        if fi % 25 == 0:
+            _LOG.info("[DATASET] transcribe %.2fs audio in %.2fs", dur_s, time.perf_counter() - t_tr)
         segments = list(segments)
         i = 0
         sentence = ""
@@ -131,7 +167,7 @@ def format_audio_list(
                 audio = wav[int(sr * sentence_start) : int(sr * word_end)].unsqueeze(0)
                 # if the audio is too short ignore it (i.e < 0.33 seconds)
                 if audio.size(-1) >= sr / 3:
-                    torchaudio.save(absoulte_path, audio, sr)
+                    sf.write(absoulte_path, audio.squeeze(0).cpu().numpy(), sr, subtype="PCM_16")
                 else:
                     continue
 
@@ -140,6 +176,7 @@ def format_audio_list(
                 metadata["speaker_name"].append(speaker_name)
 
     df = pandas.DataFrame(metadata)
+    _LOG.info("[DATASET] extracted segments rows=%s total_audio_s=%.2f", len(df), audio_total_size)
     df = df.sample(frac=1)
     num_val_samples = int(len(df) * eval_percentage)
 
@@ -153,9 +190,17 @@ def format_audio_list(
     eval_metadata_path = os.path.join(out_path, "metadata_eval.csv")
     df_eval = df_eval.sort_values("audio_file")
     df_eval.to_csv(eval_metadata_path, sep="|", index=False)
+    _LOG.info(
+        "[DATASET] wrote train=%s rows=%s eval=%s rows=%s",
+        train_metadata_path,
+        len(df_train),
+        eval_metadata_path,
+        len(df_eval),
+    )
 
     # deallocate VRAM and RAM
     del asr_model, df_train, df_eval, df, metadata
     gc.collect()
 
+    _LOG.info("[DATASET] format_audio_list done total_audio_s=%.2f", audio_total_size)
     return train_metadata_path, eval_metadata_path, audio_total_size

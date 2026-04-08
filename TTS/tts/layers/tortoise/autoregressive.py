@@ -8,10 +8,16 @@ import torch.nn.functional as F
 from transformers import GenerationMixin, GPT2Config, GPT2PreTrainedModel, LogitsProcessorList
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
-# TODO: use torch.isin from Pytorch 2.4
-from transformers.pytorch_utils import isin_mps_friendly as isin
-
 from TTS.tts.layers.tortoise.arch_utils import AttentionBlock, TypicalLogitsWarper
+
+try:
+    from transformers.pytorch_utils import isin_mps_friendly as isin
+except ImportError:
+    # transformers>=5 removed isin_mps_friendly; torch.isin is fine on CUDA/CPU (see HF issue #30430).
+    def isin(*, elements: torch.Tensor, test_elements: torch.Tensor) -> torch.Tensor:
+        if elements.device.type == "mps":
+            return torch.isin(elements.cpu(), test_elements.cpu()).to(elements.device)
+        return torch.isin(elements, test_elements)
 
 
 def null_position_embeddings(range, dim):

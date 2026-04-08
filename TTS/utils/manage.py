@@ -21,6 +21,21 @@ from TTS.vc.configs.knnvc_config import KNNVCConfig
 logger = logging.getLogger(__name__)
 
 
+def _running_in_docker() -> bool:
+    """True inside a typical Linux Docker container (file created by Docker daemon)."""
+    try:
+        return os.path.isfile("/.dockerenv")
+    except OSError:
+        return False
+
+
+def _write_tos_agreement(model_full_path: Path) -> None:
+    model_full_path.mkdir(exist_ok=True, parents=True)
+    tos_path = model_full_path / "tos_agreed.txt"
+    with open(tos_path, "w", encoding="utf-8") as f:
+        f.write("I have read, understood and agreed to the Terms and Conditions.")
+
+
 class ModelItem(TypedDict, total=False):
     model_name: Required[str]
     model_type: Required[str]
@@ -286,13 +301,30 @@ class ModelManager:
     def ask_tos(model_full_path: Path) -> bool:
         """Ask the user to agree to the terms of service"""
         tos_path = model_full_path / "tos_agreed.txt"
+        if os.environ.get("COQUI_TOS_AGREED") == "1":
+            _write_tos_agreement(model_full_path)
+            return True
+        if _running_in_docker() and os.environ.get("COQUI_TOS_AGREED") != "0":
+            _write_tos_agreement(model_full_path)
+            logger.info(
+                "Docker detected: recorded CPML terms acceptance at %s "
+                "(set COQUI_TOS_AGREED=0 to refuse, or COQUI_TOS_AGREED=1 to record explicitly).",
+                tos_path,
+            )
+            return True
         print("You must confirm the following:")
         print('  "I have purchased a commercial license from Coqui: licensing@coqui.ai"')
         print('  "Otherwise, I agree to the terms of the non-commercial CPML: https://tts-hub.github.io/cpml" - [y/n]')
-        answer = input("   > ")
+        try:
+            answer = input("   > ")
+        except EOFError:
+            logger.error(
+                "Non-interactive stdin: cannot prompt for license agreement. "
+                "Use a TTY, set COQUI_TOS_AGREED=1, or run inside Docker (/.dockerenv)."
+            )
+            return False
         if answer.lower() == "y":
-            with open(tos_path, "w", encoding="utf-8") as f:
-                f.write("I have read, understood and agreed to the Terms and Conditions.")
+            _write_tos_agreement(model_full_path)
             return True
         return False
 
@@ -301,7 +333,19 @@ class ModelManager:
         """Check if the user has agreed to the terms of service"""
         if "tos_required" in model_item and model_item["tos_required"]:
             tos_path = os.path.join(model_full_path, "tos_agreed.txt")
-            if os.path.exists(tos_path) or os.environ.get("COQUI_TOS_AGREED") == "1":
+            if os.path.exists(tos_path):
+                return True
+            if os.environ.get("COQUI_TOS_AGREED") == "1":
+                _write_tos_agreement(Path(model_full_path))
+                logger.info("COQUI_TOS_AGREED=1: wrote terms acceptance to %s", tos_path)
+                return True
+            if _running_in_docker() and os.environ.get("COQUI_TOS_AGREED") != "0":
+                _write_tos_agreement(Path(model_full_path))
+                logger.info(
+                    "Docker detected: wrote CPML terms acceptance to %s "
+                    "(set COQUI_TOS_AGREED=0 if you do not agree).",
+                    tos_path,
+                )
                 return True
             return False
         return True
