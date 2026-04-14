@@ -17,6 +17,26 @@ from TTS.demos.xtts_ft_demo.utils.plot_loss import save_training_loss_plot
 _LOG = logging.getLogger("xtts_ft.train")
 
 
+def _optimizer_steps_per_epoch(n_train: int, batch_size: int, grad_acumm: int) -> int:
+    """Estimativa de passos do otimizador por época (alinhada ao DataLoader XTTS: drop_last=False)."""
+    bs = max(1, int(batch_size))
+    ga = max(1, int(grad_acumm))
+    n = max(1, int(n_train))
+    num_batches = (n + bs - 1) // bs
+    return max(1, (num_batches + ga - 1) // ga)
+
+
+def _save_step_for_checkpoint_every_epochs(
+    n_train: int,
+    batch_size: int,
+    grad_acumm: int,
+    every_n_epochs: int,
+) -> int:
+    """`save_step` do Trainer ≈ passos a cada `every_n_epochs` épocas completas."""
+    e = max(1, int(every_n_epochs))
+    return max(1, e * _optimizer_steps_per_epoch(n_train, batch_size, grad_acumm))
+
+
 def _num_loader_workers() -> int:
     """DataLoader worker count for fine-tuning.
 
@@ -32,7 +52,19 @@ def _num_loader_workers() -> int:
     return max(0, min(n, 32))
 
 
-def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, output_path, max_audio_length=255995):
+def train_gpt(
+    language,
+    num_epochs,
+    batch_size,
+    grad_acumm,
+    train_csv,
+    eval_csv,
+    output_path,
+    max_audio_length=255995,
+    *,
+    checkpoint_every_epochs: int = 2,
+    save_n_checkpoints: int = 10,
+):
     #  Logging parameters
     RUN_NAME = "GPT_XTTS_FT"
     PROJECT_NAME = "XTTS_trainer"
@@ -121,6 +153,38 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     else:
         _LOG.info("[TRAIN] XTTS tokenizer/model already present under %s", CHECKPOINTS_OUT_PATH)
 
+    # Samples (needed before config: save_step = N épocas em passos do otimizador)
+    _LOG.info("[TRAIN] load_tts_samples (early, for checkpoint schedule) ...")
+    t_s = time.perf_counter()
+    train_samples, eval_samples = load_tts_samples(
+        DATASETS_CONFIG_LIST,
+        eval_split=True,
+        eval_split_max_size=256,
+        eval_split_size=0.01,
+    )
+    _LOG.info(
+        "[TRAIN] samples loaded in %.1fs train=%s eval=%s",
+        time.perf_counter() - t_s,
+        len(train_samples),
+        len(eval_samples),
+    )
+
+    save_step = _save_step_for_checkpoint_every_epochs(
+        len(train_samples),
+        BATCH_SIZE,
+        GRAD_ACUMM_STEPS,
+        checkpoint_every_epochs,
+    )
+    steps_ep = _optimizer_steps_per_epoch(len(train_samples), BATCH_SIZE, GRAD_ACUMM_STEPS)
+    _LOG.info(
+        "[TRAIN] checkpoint policy: every %s epoch(s), keep last %s file(s); "
+        "est. optimizer steps/epoch=%s -> save_step=%s",
+        checkpoint_every_epochs,
+        save_n_checkpoints,
+        steps_ep,
+        save_step,
+    )
+
     # init args and config
     model_args = GPTArgs(
         max_conditioning_length=132300,  # 6 secs
@@ -162,8 +226,8 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
         print_step=25,
         plot_step=50,
         log_model_step=100,
-        save_step=1000,
-        save_n_checkpoints=1,
+        save_step=save_step,
+        save_n_checkpoints=max(1, int(save_n_checkpoints)),
         save_checkpoints=True,
         # target_loss="loss",
         print_eval=False,
@@ -183,22 +247,6 @@ def train_gpt(language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv,
     t_m = time.perf_counter()
     model = GPTTrainer.init_from_config(config)
     _LOG.info("[TRAIN] model init done in %.1fs", time.perf_counter() - t_m)
-
-    # load training samples
-    _LOG.info("[TRAIN] load_tts_samples ...")
-    t_s = time.perf_counter()
-    train_samples, eval_samples = load_tts_samples(
-        DATASETS_CONFIG_LIST,
-        eval_split=True,
-        eval_split_max_size=config.eval_split_max_size,
-        eval_split_size=config.eval_split_size,
-    )
-    _LOG.info(
-        "[TRAIN] samples loaded in %.1fs train=%s eval=%s",
-        time.perf_counter() - t_s,
-        len(train_samples),
-        len(eval_samples),
-    )
 
     # init the trainer and 🚀
     _LOG.info("[TRAIN] building Trainer ...")

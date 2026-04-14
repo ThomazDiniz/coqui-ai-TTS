@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Build Coqui-format metadata_train.csv / metadata_eval.csv from brPB22_g1bF01_char metadata.csv.
+"""Build Coqui-format metadata_train.csv / metadata_eval.csv from a pipe metadata.csv.
+
+Input: one line per utterance, ``id|text`` (id may omit ``.wav``). Output paths: ``wavs/<id>.wav``.
+
+Works for ``data/brPB22_g1bF01_char`` or any folder with the same layout (e.g. ``data/all_char`` + ``wavs/``).
 
 Usage (from repo root):
   python scripts/export_brPB22_xtts_metadata.py
   python scripts/export_brPB22_xtts_metadata.py --dataset data/brPB22_g1bF01_char --eval-fraction 0.15
+  python scripts/export_brPB22_xtts_metadata.py --dataset data/all_char --speaker-name paraiba
 """
 
 from __future__ import annotations
@@ -19,12 +24,17 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=Path,
-        default=Path("data/brPB22_g1bF01_char"),
-        help="Folder containing metadata.csv and wavs/",
+        default=Path("data/all_char"),
+        help="Folder containing metadata.csv (pipe: id|text) and wavs/",
     )
     parser.add_argument("--eval-fraction", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--speaker-name", type=str, default="brPB22")
+    parser.add_argument(
+        "--speaker-name",
+        type=str,
+        default="all_char",
+        help="Valor da coluna speaker_name (mesmo formato que outros datasets Coqui pipe).",
+    )
     args = parser.parse_args()
 
     meta_path = args.dataset / "metadata.csv"
