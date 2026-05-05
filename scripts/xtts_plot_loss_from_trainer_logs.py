@@ -16,8 +16,16 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 #   --> TIME: 2026-04-08 08:51:53 -- STEP: 0/34 -- GLOBAL_STEP: 0
 STEP_HDR_RE = re.compile(r"GLOBAL_STEP:\s*(\d+)")
 
+# Eval batches (coqui-tts-trainer ConsoleLogger.print_eval_step): only "--> STEP: N"
+# — not "STEP: N/M" and no GLOBAL_STEP on that line.
+EVAL_SUBSTEP_RE = re.compile(r"-->\s*STEP:\s*(\d+)\s*$")
+
+# Resumo de eval por época (print_epoch_end): sem GLOBAL_STEP antes das métricas.
+EVAL_SUMMARY_HDR_RE = re.compile(r"EVAL\s+PERFORMANCE", re.IGNORECASE)
+
 # Example:
 #     | > loss: 2.4136147499084473  (2.4136147499084473)
+#     | > avg_loss: 1.23 (+0.0)   # após strip ANSI
 METRIC_RE = re.compile(r"^\s*\|\s*>\s*([A-Za-z0-9_]+)\s*:\s*([+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?)", re.IGNORECASE)
 LOG_TIMESTAMP_RE = re.compile(
     r"(?:-->\s*)?TIME:\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})",
@@ -37,6 +45,14 @@ class Point:
     log_timestamp: str | None = None  # wall clock from trainer line, if present
 
 
+def _pick_main_loss(metrics: dict[str, float]) -> float | None:
+    """Train usa `loss`; resumo de eval por época usa `avg_*` (ex.: avg_loss)."""
+    for k in ("loss", "avg_loss", "model_loss"):
+        if k in metrics:
+            return metrics[k]
+    return None
+
+
 def _clean_line(s: str) -> str:
     return ANSI_RE.sub("", s).rstrip("\n")
 
@@ -48,6 +64,7 @@ def parse_trainer_log(path: Path) -> list[Point]:
     cur_step: int | None = None
     cur_header_ts: str | None = None
     cur_metrics: dict[str, float] = {}
+    last_global_step: int = 0
 
     def flush():
         nonlocal cur_step, cur_metrics, cur_phase, cur_epoch, cur_header_ts
@@ -58,12 +75,13 @@ def parse_trainer_log(path: Path) -> list[Point]:
             cur_step = None
             return
         st = cur_metrics.get("step_time")
+        main_loss = _pick_main_loss(cur_metrics)
         points.append(
             Point(
                 global_step=cur_step,
-                loss=cur_metrics.get("loss"),
-                loss_text_ce=cur_metrics.get("loss_text_ce"),
-                loss_mel_ce=cur_metrics.get("loss_mel_ce"),
+                loss=main_loss,
+                loss_text_ce=cur_metrics.get("loss_text_ce") or cur_metrics.get("avg_loss_text_ce"),
+                loss_mel_ce=cur_metrics.get("loss_mel_ce") or cur_metrics.get("avg_loss_mel_ce"),
                 current_lr=cur_metrics.get("current_lr"),
                 epoch=cur_epoch,
                 phase=cur_phase,
@@ -99,24 +117,44 @@ def parse_trainer_log(path: Path) -> list[Point]:
                 cur_phase = "train"
                 continue
 
-            # New step header
+            # Resumo eval por época (avg_loss, etc.) — sem GLOBAL_STEP neste bloco
+            if EVAL_SUMMARY_HDR_RE.search(line):
+                flush()
+                cur_phase = "eval"
+                cur_step = last_global_step
+                continue
+
+            # New step header (train)
             m = STEP_HDR_RE.search(line)
             if m:
                 flush()
                 cur_step = int(m.group(1))
+                last_global_step = cur_step
+                tm = LOG_TIMESTAMP_RE.search(line)
+                cur_header_ts = tm.group(1) if tm else None
+                continue
+
+            # Cabeçalho de batch na avaliação: "--> STEP: k" (sem GLOBAL_STEP)
+            em = EVAL_SUBSTEP_RE.search(line)
+            if em and cur_phase == "eval":
+                flush()
+                cur_step = last_global_step
                 tm = LOG_TIMESTAMP_RE.search(line)
                 cur_header_ts = tm.group(1) if tm else None
                 continue
 
             # Metric lines under a step header
             m = METRIC_RE.match(line)
-            if m and cur_step is not None:
+            if m:
                 k = m.group(1).lower()
                 try:
                     v = float(m.group(2))
                 except ValueError:
                     continue
-                cur_metrics[k] = v
+                if cur_step is None and cur_phase == "eval":
+                    cur_step = last_global_step
+                if cur_step is not None:
+                    cur_metrics[k] = v
                 continue
 
     flush()

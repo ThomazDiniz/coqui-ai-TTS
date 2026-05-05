@@ -756,10 +756,18 @@ def _resolve_audio_path(data_root: Path, rel: str, audio_subdir: str | None) -> 
             seen.add(key)
             ordered.append(c)
 
+    def _with_audio_extensions(path_obj: Path) -> list[Path]:
+        # Alguns datasets trazem audio_file sem sufixo (ex.: "segment_123").
+        # Aqui tentamos extensoes de audio comuns antes de concluir "missing".
+        if path_obj.suffix:
+            return [path_obj]
+        return [path_obj, path_obj.with_suffix(".wav"), path_obj.with_suffix(".mp3"), path_obj.with_suffix(".flac")]
+
     for c in ordered:
-        r = c.resolve()
-        if r.is_file():
-            return r
+        for cand in _with_audio_extensions(c):
+            r = cand.resolve()
+            if r.is_file():
+                return r
     return ordered[0].resolve()
 
 
@@ -1246,6 +1254,7 @@ def _run_training_and_artifacts(
     _LOG.info("=== Treino e artefatos concluídos ===")
     _LOG.info("Artefatos: %s", artifacts)
     _LOG.info("Checkpoints: %s", training_root)
+    _log_artifact_checklist(artifacts, training_root)
     (artifacts / ".stage_train_ok").write_text(
         datetime.now(timezone.utc).isoformat() + "\n", encoding="utf-8"
     )
@@ -1266,6 +1275,8 @@ def _load_plot_loss_module():
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load {path}")
     mod = importlib.util.module_from_spec(spec)
+    # importlib exige registo em sys.modules para que dataclasses resolvam o módulo corretamente
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -1328,6 +1339,34 @@ def _run_loss_plot_scripts(training_root: Path, artifacts: Path) -> list[str]:
         (artifacts / "trainer_log_plot_error.txt").write_text(str(e), encoding="utf-8")
 
     return written
+
+
+def _log_artifact_checklist(artifacts: Path, training_root: Path) -> None:
+    """Regista checklist final de artefatos esperados (presente/ausente)."""
+    run_dirs = sorted(training_root.glob("GPT_XTTS_FT-*"), key=lambda p: p.stat().st_mtime, reverse=True)
+    run_dir = run_dirs[0] if run_dirs else None
+    latest_ckpt = None
+    if run_dir:
+        ckpts = sorted(run_dir.glob("checkpoint_*.pth"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if ckpts:
+            latest_ckpt = ckpts[0]
+
+    checks: list[tuple[str, Path | None]] = [
+        ("checkpoint_final_preferido", (run_dir / "best_model.pth") if run_dir else None),
+        ("checkpoint_fallback_model", (run_dir / "model.pth") if run_dir else None),
+        ("checkpoint_mais_recente", latest_ckpt),
+        ("tempo_medio_por_epoca_json", artifacts / "training_time_by_epoch.json"),
+        ("tempo_por_step_csv", artifacts / "training_time_by_step.csv"),
+        ("loss_por_epoca_png", artifacts / "training_loss_by_epoch.png"),
+        ("loss_por_step_png", artifacts / "training_loss_from_trainer_log.png"),
+        ("loss_tensorboard_png", artifacts / "training_loss_tensorboard.png"),
+        ("inferencia_amostras_manifest", artifacts / "audio_compare" / "manifest.json"),
+    ]
+
+    _LOG.info("Checklist final de artefatos esperados:")
+    for label, p in checks:
+        ok = bool(p and p.is_file())
+        _LOG.info("  - [%s] %s: %s", "OK" if ok else "MISSING", label, p if p else "(n/a)")
 
 
 def _write_relatorio_experimento(
